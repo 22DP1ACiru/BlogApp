@@ -1,4 +1,7 @@
-using BlogApp.Web.Data;
+using BlogApp.DAL.Data;
+using BlogApp.Core.Entities;
+using BlogApp.BLL.Interfaces;
+using BlogApp.BLL.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +13,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews();
+
+// Register the application services
+builder.Services.AddScoped<IAccountService, AccountService>();
+
+// Register the email sender service
+builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
 
 var app = builder.Build();
 
