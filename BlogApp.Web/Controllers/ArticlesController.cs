@@ -102,7 +102,7 @@ namespace BlogApp.Web.Controllers
 
         // GET: /Articles/MyArticles (Logged-in user's articles)
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]  
         public async Task<IActionResult> MyArticles()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -128,7 +128,7 @@ namespace BlogApp.Web.Controllers
 
         // GET: /Articles/Create
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]
         public IActionResult Create()
         {
             return View(new CreateArticleViewModel());
@@ -137,8 +137,8 @@ namespace BlogApp.Web.Controllers
         // POST: /Articles/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
-            public async Task<IActionResult> Create(CreateArticleViewModel model)
+        [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]
+        public async Task<IActionResult> Create(CreateArticleViewModel model)
         {
             if (ModelState.IsValid)
             {

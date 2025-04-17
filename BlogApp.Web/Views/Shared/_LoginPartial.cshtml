@@ -14,13 +14,23 @@
             <a id="manage" class="nav-link text-dark" asp-controller="Manage" asp-action="Index" title="Manage your profile">Hello @UserManager.GetUserName(User)!</a>
         </li>
 
-        <li class="nav-item">
-            <a class="nav-link text-dark" asp-controller="Articles" asp-action="MyArticles" title="View your articles">My Articles</a>
-        </li>
+        @if (User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Administrator))
+        {
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-controller="Articles" asp-action="MyArticles" title="View your articles">My Articles</a>
+            </li>
 
-        <li class="nav-item">
-            <a class="nav-link text-dark" asp-controller="Articles" asp-action="Create" title="Create a new article">New Article</a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-controller="Articles" asp-action="Create" title="Create a new article">New Article</a>
+            </li>
+        }
+
+        @if (User.IsInRole(AppRoles.Administrator))
+        {
+            <li class="nav-item">
+                <a class="nav-link text-info" asp-controller="Admin" asp-action="Index" title="Admin Area">Admin</a>
+            </li>
+        }
 
         <li class="nav-item">
             @* Logout needs to be a form POST *@

@@ -23,7 +23,6 @@
         <dd class="col-sm-10">
             @Html.DisplayFor(model => model.AuthorName)
         </dd>
-        @* Add other fields if helpful for confirmation *@
     </dl>
 
     @* Display Error Message if redirected back from POST failure *@
@@ -33,11 +32,9 @@
     }
 
     <form asp-action="Delete" method="post">
-        @* Target the DeleteConfirmed POST action * G/
-        @* The ActionName("Delete") attribute on DeleteConfirmed maps this *@
         @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="Id" /> @* Pass the ID to the POST action *@
+        <input type="hidden" asp-for="Id" /> 
         <button type="submit" class="btn btn-danger">Delete Article</button> |
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a> @* Go back to Details *@
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
