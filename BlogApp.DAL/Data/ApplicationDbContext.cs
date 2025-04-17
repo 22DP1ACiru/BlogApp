@@ -11,13 +11,31 @@ namespace BlogApp.DAL.Data
         {
         }
 
-        // DbSets for Blog entities later
-        // public DbSet<Post> Posts { get; set; }
-        // public DbSet<Comment> Comments { get; set; }
+        public DbSet<Article> Articles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<Article>().ToTable("Articles");
+
+            builder.Entity<Article>().HasKey(a => a.Id);
+
+            builder.Entity<Article>()
+                .Property(a => a.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Entity<Article>()
+                .Property(a => a.ImageUrl)
+                .HasMaxLength(500);
+
+            builder.Entity<Article>()
+                .HasOne(a => a.Author)
+                .WithMany()
+                .HasForeignKey(a => a.AuthorId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -2,6 +2,9 @@ using BlogApp.DAL.Data;
 using BlogApp.Core.Entities;
 using BlogApp.BLL.Interfaces;
 using BlogApp.BLL.Services;
+using BlogApp.DAL.Interfaces;
+using BlogApp.DAL.Repositories;
+using BlogApp.DAL;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +28,8 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 // Register the email sender service
 builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 var app = builder.Build();
 
