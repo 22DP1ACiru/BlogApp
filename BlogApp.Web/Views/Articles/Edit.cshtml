@@ -1,0 +1,68 @@
+﻿@model BlogApp.Web.Models.EditArticleViewModel
+
+@{
+    ViewData["Title"] = "Edit Article";
+    var defaultProfilePic = "/images/default-profile.png"; // Assuming default if no image
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+<div class="row">
+    <div class="col-md-9">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            @* Include the ID of the article being edited *@
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Content" class="form-label"></label>
+                <textarea asp-for="Content" class="form-control" rows="15"></textarea>
+                <span asp-validation-for="Content" class="text-danger"></span>
+            </div>
+
+            @* Display current image and allow replacing it *@
+            <div class="mb-3">
+                <label asp-for="NewImage" class="form-label"></label>
+                @if (!string.IsNullOrEmpty(Model.ExistingImageUrl))
+                {
+                    <div class="mb-2">
+                        <label>Current Image:</label><br />
+                        <img src="@Model.ExistingImageUrl" alt="Current Article Image" style="max-width: 300px; max-height: 200px; margin-bottom: 10px;" class="img-thumbnail" />
+                        @* Store existing URL to compare in controller - not strictly needed if fetched on POST *@
+                        <input type="hidden" asp-for="ExistingImageUrl" />
+                    </div>
+                    <small class="form-text text-muted">Upload a new image file to replace the current one.</small>
+                }
+                else
+                {
+                    <small class="form-text text-muted">Upload an image file for this article.</small>
+                }
+                <input asp-for="NewImage" type="file" class="form-control mt-1" accept="image/png, image/jpeg, image/gif" />
+                <span asp-validation-for="NewImage" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" asp-for="IsPublished" />
+                <label class="form-check-label" asp-for="IsPublished"></label>
+                <span asp-validation-for="IsPublished" class="text-danger"></span>
+            </div>
+
+
+            <div class="form-group mt-4">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a> @* Go back to Details page *@
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @* Scripts for Rich Text Editor would go here *@
+}

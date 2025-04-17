@@ -28,8 +28,11 @@ namespace BlogApp.BLL.Services
         {
             try
             {
-                var articles = await _unitOfWork.Articles.FindAsync(a => a.IsPublished);
-                return articles.OrderByDescending(a => a.PublishedDate);
+                var allArticlesWithAuthors = await _unitOfWork.Articles.GetArticlesWithAuthorsAsync();
+
+                var publishedArticles = allArticlesWithAuthors.Where(a => a.IsPublished);
+
+                return publishedArticles;
             }
             catch (Exception ex)
             {
