@@ -23,12 +23,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.S
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-// Register the application services
+// Register application services from BLL
 builder.Services.AddScoped<IAccountService, AccountService>();
-
-// Register the email sender service
 builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
+builder.Services.AddScoped<IArticleService, ArticleService>();
 
+// Register UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 var app = builder.Build();
