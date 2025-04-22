@@ -1,0 +1,13 @@
+﻿@{
+    ViewData["Title"] = "Email Confirmation";
+}
+
+<h1>@ViewData["Title"]</h1>
+<p>
+    @ViewBag.StatusMessage
+</p>
+
+@if (ViewBag.StatusMessage != null && ViewBag.StatusMessage.StartsWith("Thank you"))
+{
+    <p><a asp-action="Login" asp-controller="Account">Click here to Log in</a></p>
+}

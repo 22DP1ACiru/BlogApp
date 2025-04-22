@@ -1,26 +1,54 @@
 ﻿@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+@using BlogApp.Core.Entities
+@using BlogApp.Core.Constants
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 
 <ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    <li class="nav-item">
-        <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
-    </li>
-    <li class="nav-item">
-        <form  class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button  type="submit" class="nav-link btn btn-link text-dark">Logout</button>
-        </form>
-    </li>
-}
-else
-{
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
-    </li>
-}
+    @if (SignInManager.IsSignedIn(User))
+    {
+        @* --- Links for LOGGED IN users --- *@
+
+        <li class="nav-item">
+            <a id="manage" class="nav-link text-dark" asp-controller="Manage" asp-action="Index" title="Manage your profile">Hello @UserManager.GetUserName(User)!</a>
+        </li>
+
+        @if (User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Administrator))
+        {
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-controller="Articles" asp-action="MyArticles" title="View your articles">My Articles</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-controller="Articles" asp-action="Create" title="Create a new article">New Article</a>
+            </li>
+        }
+
+        @if (User.IsInRole(AppRoles.Administrator))
+        {
+            <li class="nav-item">
+                <a class="nav-link text-info" asp-controller="Admin" asp-action="Index" title="Admin Area">Admin</a>
+            </li>
+        }
+
+        <li class="nav-item">
+            @* Logout needs to be a form POST *@
+            <form id="logoutForm" class="form-inline" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                @Html.AntiForgeryToken() @* Add AntiForgeryToken *@
+                <button id="logout" type="submit" class="nav-link btn btn-link text-dark border-0">Logout</button>
+            </form>
+        </li>
+    }
+    else
+    {
+        @* --- Links for LOGGED OUT users --- *@
+
+        <li class="nav-item">
+            <a class="nav-link text-dark" id="register" asp-controller="Account" asp-action="Register">Register</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" id="login" asp-controller="Account" asp-action="Login">Login</a>
+        </li>
+    }
 </ul>

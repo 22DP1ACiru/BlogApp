@@ -1,0 +1,53 @@
+﻿@model BlogApp.Web.Models.ArticleViewModel
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<article>
+    <header class="mb-4">
+        <h1>@Html.DisplayFor(model => model.Title)</h1>
+        <p class="text-muted">
+            Published on @Model.PublishedDate.ToString("MMMM dd, yyyy 'at' h:mm tt")
+            by @Model.AuthorName
+            @if (!string.IsNullOrEmpty(Model.AuthorProfilePictureUrl))
+            {
+                <img src="@Model.AuthorProfilePictureUrl" alt="@Model.AuthorName" class="rounded-circle ms-1" style="width: 25px; height: 25px; object-fit: cover;" />
+            }
+        </p>
+        @if (!Model.IsPublished)
+        {
+            <p><span class="badge bg-warning text-dark">Draft / Not Published</span></p>
+        }
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+    {
+        <figure class="mb-4 text-center"> @* Center the image *@
+    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded shadow-sm" /> @* Make image responsive and add shadow *@
+    </figure>
+    }
+
+    <section class="article-content">
+        @Html.Raw(Model.Content)
+    </section>
+</article>
+
+<hr class="my-4" />
+
+@* Action buttons section *@
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        @if (Model.CanModify)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary me-2">Edit</a>
+            @* Button to trigger delete confirmation modal (or link to delete page) *@
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+            @* OR use a button to trigger a Bootstrap modal for confirmation *@
+            @* <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button> *@
+        }
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+    </div>
+</div>
