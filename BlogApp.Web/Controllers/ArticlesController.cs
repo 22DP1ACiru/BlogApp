@@ -12,17 +12,20 @@ namespace BlogApp.Web.Controllers
     public class ArticlesController : Controller
     {
         private readonly IArticleService _articleService;
+        private readonly IRankingService _rankingService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<ArticlesController> _logger;
 
         public ArticlesController(
             IArticleService articleService,
+            IRankingService rankingService,
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment webHostEnvironment,
             ILogger<ArticlesController> logger)
         {
             _articleService = articleService;
+            _rankingService = rankingService;
             _userManager = userManager;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
@@ -84,6 +87,10 @@ namespace BlogApp.Web.Controllers
                 canModify = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
             }
 
+            int score = await _rankingService.GetArticleScoreAsync(id);
+            int? currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
+            bool canRank = currentUserId != null && await _rankingService.CanUserRankAsync(currentUserId);
+
             var viewModel = new ArticleViewModel
             {
                 Id = article.Id,
@@ -94,10 +101,39 @@ namespace BlogApp.Web.Controllers
                 AuthorName = article.Author?.UserName ?? "Unknown",
                 AuthorProfilePictureUrl = article.Author?.ProfilePictureUrl,
                 IsPublished = article.IsPublished,
-                CanModify = canModify
+                CanModify = canModify,
+                Score = score,
+                CurrentUserVote = currentUserVote
             };
 
+            ViewBag.CanRank = canRank;
+
             return View(viewModel);
+        }
+
+        // Vote action
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = $"{AppRoles.Ranker},{AppRoles.Administrator}")]
+        public async Task<IActionResult> Vote(int articleId, int voteValue)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Challenge();
+
+            if (voteValue != 1 && voteValue != -1)
+            {
+                TempData["ErrorMessage"] = "Invalid vote value.";
+                return RedirectToAction(nameof(Details), new { id = articleId });
+            }
+
+            bool success = await _rankingService.VoteAsync(articleId, userId, voteValue);
+
+            if (!success)
+            {
+                TempData["ErrorMessage"] = "Could not process your vote at this time.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = articleId });
         }
 
         // GET: /Articles/MyArticles (Logged-in user's articles)

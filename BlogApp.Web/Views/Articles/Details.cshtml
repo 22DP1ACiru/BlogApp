@@ -2,19 +2,60 @@
 
 @{
     ViewData["Title"] = Model.Title;
+    bool canRank = ViewBag.CanRank ?? false;
+    int? userVote = Model.CurrentUserVote;
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
 }
 
 <article>
     <header class="mb-4">
         <h1>@Html.DisplayFor(model => model.Title)</h1>
-        <p class="text-muted">
-            Published on @Model.PublishedDate.ToString("MMMM dd, yyyy 'at' h:mm tt")
-            by @Model.AuthorName
-            @if (!string.IsNullOrEmpty(Model.AuthorProfilePictureUrl))
-            {
-                <img src="@Model.AuthorProfilePictureUrl" alt="@Model.AuthorName" class="rounded-circle ms-1" style="width: 25px; height: 25px; object-fit: cover;" />
-            }
-        </p>
+        <div class="d-flex justify-content-between align-items-center">
+            <p class="text-muted mb-0">
+                Published on @Model.PublishedDate.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                by @Model.AuthorName
+                @if (!string.IsNullOrEmpty(Model.AuthorProfilePictureUrl))
+                {
+                    <img src="@Model.AuthorProfilePictureUrl" alt="@Model.AuthorName" class="rounded-circle ms-1" style="width: 25px; height: 25px; object-fit: cover;" />
+                }
+            </p>
+
+            @* --- Score and Voting Section --- *@
+            <div class="text-end">
+                @* Align right *@
+                <span class="me-3">Score: <strong class="fs-5 @(Model.Score > 0 ? "text-success" : (Model.Score < 0 ? "text-danger" : ""))">@Model.Score</strong></span>
+
+                @if (canRank) @* Show voting buttons only if user can rank *@
+                {
+                    @* Upvote Button/Form *@
+                    <form asp-action="Vote" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="articleId" value="@Model.Id" />
+                        <input type="hidden" name="voteValue" value="1" /> @* Value for upvote *@
+                        <button type="submit" class="btn btn-sm @(userVote == 1 ? "btn-success" : "btn-outline-success")" title="Upvote">
+                            <i class="bi bi-arrow-up-circle-fill"></i>
+                            @* ▲ Upvote *@
+                        </button>
+                    </form>
+
+                    @* Downvote Button/Form *@
+                    <form asp-action="Vote" method="post" class="d-inline ms-1">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="articleId" value="@Model.Id" />
+                        <input type="hidden" name="voteValue" value="-1" /> @* Value for downvote *@
+                        <button type="submit" class="btn btn-sm @(userVote == -1 ? "btn-danger" : "btn-outline-danger")" title="Downvote">
+                            <i class="bi bi-arrow-down-circle-fill"></i>
+                            @* ▼ Downvote *@
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
         @if (!Model.IsPublished)
         {
             <p><span class="badge bg-warning text-dark">Draft / Not Published</span></p>

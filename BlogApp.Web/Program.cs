@@ -27,6 +27,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<IRankingService, RankingService>();
 
 // Register UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
