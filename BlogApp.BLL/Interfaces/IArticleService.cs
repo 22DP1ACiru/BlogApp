@@ -51,5 +51,13 @@ namespace BlogApp.BLL.Interfaces
         /// <param name="userId">The ID of the user attempting the action.</param>
         /// <returns>True if the user is authorized, false otherwise.</returns>
         Task<bool> CanUserModifyArticleAsync(int articleId, string userId);
+
+        Task<IEnumerable<Article>> GetLatestPublishedArticlesAsync(int count);
+
+        Task<IEnumerable<Article>> GetTopRankedArticlesAsync(int count);
+
+        Task<IEnumerable<Article>> GetLastCommentedArticlesAsync(int count);
+
+        Task<IEnumerable<Article>> SearchPublishedArticlesAsync(string searchTerm);
     }
 }

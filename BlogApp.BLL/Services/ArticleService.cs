@@ -257,5 +257,45 @@ namespace BlogApp.BLL.Services
                 return Enumerable.Empty<Article>();
             }
         }
+
+        public async Task<IEnumerable<Article>> GetLatestPublishedArticlesAsync(int count)
+        {
+            // Basic validation
+            if (count <= 0) return Enumerable.Empty<Article>();
+
+            try
+            {
+                // Call the corresponding method in the repository via the Unit of Work
+                return await _unitOfWork.Articles.GetLatestPublishedArticlesAsync(count);
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                _logger.LogError(ex, "Error getting latest {Count} published articles.", count);
+                // Return an empty list on failure
+                return Enumerable.Empty<Article>();
+            }
+        }
+
+        public async Task<IEnumerable<Article>> GetTopRankedArticlesAsync(int count)
+        {
+            if (count <= 0) return Enumerable.Empty<Article>();
+            try { return await _unitOfWork.Articles.GetTopRankedArticlesAsync(count); }
+            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+        }
+
+        public async Task<IEnumerable<Article>> GetLastCommentedArticlesAsync(int count)
+        {
+            if (count <= 0) return Enumerable.Empty<Article>();
+            try { return await _unitOfWork.Articles.GetLastCommentedArticlesAsync(count); }
+            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+        }
+
+        public async Task<IEnumerable<Article>> SearchPublishedArticlesAsync(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm)) return Enumerable.Empty<Article>();
+            try { return await _unitOfWork.Articles.SearchPublishedArticlesAsync(searchTerm); }
+            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+        }
     }
 }
