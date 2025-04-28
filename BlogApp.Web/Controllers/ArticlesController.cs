@@ -13,6 +13,7 @@ namespace BlogApp.Web.Controllers
     {
         private readonly IArticleService _articleService;
         private readonly IRankingService _rankingService;
+        private readonly ICommentService _commentService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<ArticlesController> _logger;
@@ -20,12 +21,14 @@ namespace BlogApp.Web.Controllers
         public ArticlesController(
             IArticleService articleService,
             IRankingService rankingService,
+            ICommentService commentService,
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment webHostEnvironment,
             ILogger<ArticlesController> logger)
         {
             _articleService = articleService;
             _rankingService = rankingService;
+            _commentService = commentService;
             _userManager = userManager;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
@@ -69,6 +72,10 @@ namespace BlogApp.Web.Controllers
             // Check if published or user has rights
             bool canView = article.IsPublished;
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get current user ID (null if anonymous)
+            bool canModify = false;
+            bool canRank = false;
+            bool canComment = false;
+
             if (!canView && currentUserId != null) // Check modify rights only if not published and user is logged in
             {
                 canView = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
@@ -77,19 +84,53 @@ namespace BlogApp.Web.Controllers
             if (!canView)
             {
                 _logger.LogWarning("Access denied for article ID {ArticleId}. Not published and user (if any) lacks permission.", id);
-                return User.Identity.IsAuthenticated ? Forbid() : NotFound();
-            }
-
-            // Determine if the current user (if any) can modify THIS specific article
-            bool canModify = false;
-            if (currentUserId != null)
-            {
-                canModify = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
+                return (User.Identity?.IsAuthenticated == true) ? Forbid() : NotFound();
             }
 
             int score = await _rankingService.GetArticleScoreAsync(id);
             int? currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
-            bool canRank = currentUserId != null && await _rankingService.CanUserRankAsync(currentUserId);
+            var comments = await _commentService.GetCommentsByArticleIdAsync(id);
+            var commentViewModels = new List<CommentViewModel>();
+
+            if (currentUserId != null)
+            {
+                canModify = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
+                canRank = await _rankingService.CanUserRankAsync(currentUserId);
+                canComment = await _commentService.CanUserCommentAsync(currentUserId);
+                currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
+
+                foreach (var comment in comments)
+                {
+                    commentViewModels.Add(new CommentViewModel
+                    {
+                        Id = comment.Id,
+                        Content = comment.Content,
+                        CreatedDate = comment.CreatedDate,
+                        LastUpdatedDate = comment.LastUpdatedDate,
+                        AuthorUsername = comment.User?.UserName ?? "Unknown",
+                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
+                        AuthorId = comment.UserId,
+                        CanModify = await _commentService.CanUserModifyCommentAsync(comment.Id, currentUserId)
+                    });
+                }
+            }
+            else
+            {
+                foreach (var comment in comments)
+                {
+                    commentViewModels.Add(new CommentViewModel
+                    {
+                        Id = comment.Id,
+                        Content = comment.Content,
+                        CreatedDate = comment.CreatedDate,
+                        LastUpdatedDate = comment.LastUpdatedDate,
+                        AuthorUsername = comment.User?.UserName ?? "Unknown",
+                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
+                        AuthorId = comment.UserId,
+                        CanModify = false
+                    });
+                }
+            }
 
             var viewModel = new ArticleViewModel
             {
@@ -103,10 +144,12 @@ namespace BlogApp.Web.Controllers
                 IsPublished = article.IsPublished,
                 CanModify = canModify,
                 Score = score,
-                CurrentUserVote = currentUserVote
+                CurrentUserVote = currentUserVote,
+                Comments = commentViewModels
             };
 
             ViewBag.CanRank = canRank;
+            ViewBag.CanComment = canComment;
 
             return View(viewModel);
         }

@@ -82,13 +82,97 @@
         @if (Model.CanModify)
         {
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary me-2">Edit</a>
-            @* Button to trigger delete confirmation modal (or link to delete page) *@
             <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
-            @* OR use a button to trigger a Bootstrap modal for confirmation *@
-            @* <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button> *@
         }
     </div>
     <div>
         <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
     </div>
 </div>
+
+<hr class="my-4" />
+
+<section id="comments" class="mt-5">
+    <h3>Comments (@Model.Comments.Count)</h3>
+
+    @* Display existing comments *@
+    @if (Model.Comments.Any())
+    {
+        @foreach (var comment in Model.Comments)
+        {
+            <partial name="_CommentDisplayPartial" model="comment" view-data='new ViewDataDictionary(ViewData) { { "ArticleId", Model.Id } }' />
+        }
+    }
+    else
+    {
+        <p>Be the first to comment!</p>
+    }
+
+    <hr />
+
+    @* Display "Add Comment" form if user is allowed *@
+    @if (ViewBag.CanComment == true)
+    {
+        <partial name="_AddCommentPartial" model="new CreateCommentViewModel()" view-data='new ViewDataDictionary(ViewData) { { "ArticleId", Model.Id } }' />
+    }
+    else if (User.Identity?.IsAuthenticated == false) // Show login prompt if anonymous
+    {
+        <p><a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path">Log in</a> to leave a comment.</p>
+    }
+    else // Show message if logged in but lacks permission
+    {
+        <p class="text-muted">You do not have permission to leave comments.</p>
+    }
+
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" /> @* Keep for add comment form *@
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const commentsSection = document.getElementById('comments');
+
+            if (commentsSection) {
+                // --- Edit Button Click ---
+                commentsSection.addEventListener('click', function (event) {
+                    if (event.target.classList.contains('edit-comment-button')) {
+                        const button = event.target;
+                        const commentId = button.getAttribute('data-comment-id');
+                        const commentContainer = document.getElementById(`comment-${commentId}`);
+
+                        if (commentContainer) {
+                            const displayDiv = commentContainer.querySelector('.comment-display');
+                            const editFormDiv = commentContainer.querySelector('.comment-edit-form');
+                            const actionsDiv = commentContainer.querySelector('.comment-actions'); // Hide actions while editing
+
+                            if (displayDiv && editFormDiv) {
+                                displayDiv.style.display = 'none';
+                                if (actionsDiv) actionsDiv.style.display = 'none'; // Hide Edit/Delete buttons
+                                editFormDiv.style.display = 'block';
+                            }
+                        }
+                    }
+
+                    // --- Cancel Button Click ---
+                    if (event.target.classList.contains('cancel-edit-comment')) {
+                        const button = event.target;
+                        const commentId = button.getAttribute('data-comment-id');
+                        const commentContainer = document.getElementById(`comment-${commentId}`);
+
+                        if (commentContainer) {
+                            const displayDiv = commentContainer.querySelector('.comment-display');
+                            const editFormDiv = commentContainer.querySelector('.comment-edit-form');
+                             const actionsDiv = commentContainer.querySelector('.comment-actions');
+
+                            if (displayDiv && editFormDiv) {
+                                editFormDiv.style.display = 'none';
+                                displayDiv.style.display = 'block'; // Or reset to default display if needed
+                                if (actionsDiv) actionsDiv.style.display = ''; // Show Edit/Delete buttons again
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+}

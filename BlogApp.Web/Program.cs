@@ -28,6 +28,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IRankingService, RankingService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 // Register UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
