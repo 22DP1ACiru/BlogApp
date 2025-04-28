@@ -3,39 +3,38 @@
     ViewData["Title"] = "Blog Home";
 }
 
-@* --- Search Form --- *@
+@* Search Form *@
 <div class="row mb-4">
     <div class="col-md-8 offset-md-2">
-        <form asp-controller="Home" asp-action="Index" method="get" class="d-flex"> @* Submit back to Home/Index *@
+        <form asp-controller="Home" asp-action="Index" method="get" class="d-flex">
             <input type="search" name="searchString" class="form-control me-2" placeholder="Search articles..." aria-label="Search" value="@Model.SearchTerm">
             <button class="btn btn-outline-primary" type="submit">Search</button>
             @if (!string.IsNullOrEmpty(Model.SearchTerm))
             {
-                     <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary ms-2">Clear</a> @* Clear search link *@
+                <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary ms-2">Clear</a>
             }
         </form>
     </div>
 </div>
 
 
-@* --- Display Search Results or Default Sections --- *@
+@* Display Search Results or Default Sections *@
 @if (Model.SearchResults != null)
 {
-    @* == Display Search Results == *@
+    @* Display Search Results *@
         <div class="row mb-4">
             <div class="col-12">
                  <h2>Search Results for "@Model.SearchTerm" (@Model.SearchResults.Count)</h2>
                  <hr/>
             @if (!Model.SearchResults.Any())
             {
-                          <p>No articles found matching your search term.</p>
+                <p>No articles found matching your search term.</p>
             }
             else
             {
-                @* Render search results using the partial view *@
                 @foreach (var item in Model.SearchResults)
                 {
-                                  <partial name="_ArticleSummaryPartial" model="item" />
+                    <partial name="_ArticleSummaryPartial" model="item" />
                 }
             }
             </div>
@@ -43,9 +42,9 @@
 }
 else
 {
-    @* == Display Default Sections == *@
+    @* Display Default Sections *@
         <div class="row">
-        @* --- Main column: Latest Articles --- *@
+        @* Latest Articles *@
             <div class="col-lg-8">
                 <h2 class="mb-3">Latest Articles</h2>
                 <hr />
@@ -57,15 +56,14 @@ else
             {
                 @foreach (var item in Model.LatestArticles)
                 {
-                    @* Use the partial view *@
                     <partial name="_ArticleSummaryPartial" model="item" />
                 }
             }
             </div>
 
-        @* --- Sidebar column: Top Ranked / Last Commented --- *@
+        @* Top Ranked / Last Commented *@
             <div class="col-lg-4">
-            @* == Top Ranked == *@
+            @* Top Ranked *@
                 <div class="p-3 mb-4 bg-light rounded shadow-sm">
                     <h4 class="fst-italic">Top Ranked</h4>
                 @if (!Model.TopRankedArticles.Any())
@@ -74,16 +72,21 @@ else
                 }
                 else
                 {
-                            <ol class="list-unstyled mb-0">
+                    <ol class="list-unstyled mb-0">
                         @foreach (var item in Model.TopRankedArticles.OrderBy(a => Model.TopRankedArticles.IndexOf(a)))
                         {
-                                         <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
+                            <li class="d-flex justify-content-between align-items-center mb-1">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-truncate me-2">@item.Title</a>
+                                <span class="badge @(item.Score > 0 ? "bg-success" : (item.Score < 0 ? "bg-danger" : "bg-secondary")) rounded-pill">
+                                    @item.Score
+                                </span>
+                            </li>
                         }
-                             </ol>
+                    </ol>
                 }
                 </div>
 
-            @* == Last Commented == *@
+            @* Last Commented *@
                  <div class="p-3 mb-3 bg-light rounded shadow-sm">
                     <h4 class="fst-italic">Recently Commented</h4>
                 @if (!Model.LastCommentedArticles.Any())
@@ -92,12 +95,12 @@ else
                 }
                 else
                 {
-                             <ol class="list-unstyled mb-0">
+                    <ol class="list-unstyled mb-0">
                         @foreach (var item in Model.LastCommentedArticles.OrderBy(a => Model.LastCommentedArticles.IndexOf(a)))
                         {
-                                          <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
+                            <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
                         }
-                              </ol>
+                    </ol>
                 }
                 </div>
             </div>

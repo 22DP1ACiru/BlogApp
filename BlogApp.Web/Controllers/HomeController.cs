@@ -10,11 +10,13 @@ namespace BlogApp.Web.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IArticleService _articleService;
+        private readonly IRankingService _rankingService;
 
-        public HomeController(ILogger<HomeController> logger, IArticleService articleService)
+        public HomeController(ILogger<HomeController> logger, IArticleService articleService, IRankingService rankingService)
         {
             _logger = logger;
             _articleService = articleService;
+            _rankingService = rankingService;
         }
 
         [HttpGet]
@@ -46,6 +48,15 @@ namespace BlogApp.Web.Controllers
                     homeViewModel.LatestArticles = MapToArticleViewModelList(latestArticles);
                     homeViewModel.TopRankedArticles = MapToArticleViewModelList(topRankedArticles);
                     homeViewModel.LastCommentedArticles = MapToArticleViewModelList(lastCommentedArticles);
+
+                    if (homeViewModel.TopRankedArticles.Any())
+                    {
+                        _logger.LogInformation("Fetching scores for {Count} top ranked articles.", homeViewModel.TopRankedArticles.Count);
+                        foreach (var articleVM in homeViewModel.TopRankedArticles)
+                        {
+                            articleVM.Score = await _rankingService.GetArticleScoreAsync(articleVM.Id);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
