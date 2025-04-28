@@ -1,13 +1,105 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model BlogApp.Web.Models.HomeViewModel
+@{
+    ViewData["Title"] = "Blog Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to the Blog!</h1>
-    <p class="lead">Read articles, share your thoughts (soon!), and explore.</p>
-    <hr class="my-4">
-
-    <p>Check out the latest posts on the blog:</p>
-    <a class="btn btn-primary btn-lg" asp-controller="Articles" asp-action="Index" role="button">View Blog Articles</a>
-
+@* --- Search Form --- *@
+<div class="row mb-4">
+    <div class="col-md-8 offset-md-2">
+        <form asp-controller="Home" asp-action="Index" method="get" class="d-flex"> @* Submit back to Home/Index *@
+            <input type="search" name="searchString" class="form-control me-2" placeholder="Search articles..." aria-label="Search" value="@Model.SearchTerm">
+            <button class="btn btn-outline-primary" type="submit">Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                     <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary ms-2">Clear</a> @* Clear search link *@
+            }
+        </form>
+    </div>
 </div>
+
+
+@* --- Display Search Results or Default Sections --- *@
+@if (Model.SearchResults != null)
+{
+    @* == Display Search Results == *@
+        <div class="row mb-4">
+            <div class="col-12">
+                 <h2>Search Results for "@Model.SearchTerm" (@Model.SearchResults.Count)</h2>
+                 <hr/>
+            @if (!Model.SearchResults.Any())
+            {
+                          <p>No articles found matching your search term.</p>
+            }
+            else
+            {
+                @* Render search results using the partial view *@
+                @foreach (var item in Model.SearchResults)
+                {
+                                  <partial name="_ArticleSummaryPartial" model="item" />
+                }
+            }
+            </div>
+        </div>
+}
+else
+{
+    @* == Display Default Sections == *@
+        <div class="row">
+        @* --- Main column: Latest Articles --- *@
+            <div class="col-lg-8">
+                <h2 class="mb-3">Latest Articles</h2>
+                <hr />
+            @if (!Model.LatestArticles.Any())
+            {
+                <p>No articles published yet.</p>
+            }
+            else
+            {
+                @foreach (var item in Model.LatestArticles)
+                {
+                    @* Use the partial view *@
+                    <partial name="_ArticleSummaryPartial" model="item" />
+                }
+            }
+            </div>
+
+        @* --- Sidebar column: Top Ranked / Last Commented --- *@
+            <div class="col-lg-4">
+            @* == Top Ranked == *@
+                <div class="p-3 mb-4 bg-light rounded shadow-sm">
+                    <h4 class="fst-italic">Top Ranked</h4>
+                @if (!Model.TopRankedArticles.Any())
+                {
+                    <p class="mb-0 small text-muted">No articles have been ranked yet.</p>
+                }
+                else
+                {
+                            <ol class="list-unstyled mb-0">
+                        @foreach (var item in Model.TopRankedArticles.OrderBy(a => Model.TopRankedArticles.IndexOf(a)))
+                        {
+                                         <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
+                        }
+                             </ol>
+                }
+                </div>
+
+            @* == Last Commented == *@
+                 <div class="p-3 mb-3 bg-light rounded shadow-sm">
+                    <h4 class="fst-italic">Recently Commented</h4>
+                @if (!Model.LastCommentedArticles.Any())
+                {
+                    <p class="mb-0 small text-muted">No articles have been commented on yet.</p>
+                }
+                else
+                {
+                             <ol class="list-unstyled mb-0">
+                        @foreach (var item in Model.LastCommentedArticles.OrderBy(a => Model.LastCommentedArticles.IndexOf(a)))
+                        {
+                                          <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
+                        }
+                              </ol>
+                }
+                </div>
+            </div>
+        </div>
+}
