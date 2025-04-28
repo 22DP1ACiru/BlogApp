@@ -474,7 +474,6 @@ namespace BlogApp.Web.Controllers
 
 
         // --- Private Helper Methods ---
-
         private async Task<string?> SaveArticleImageAsync(IFormFile image)
         {
             if (image == null || image.Length == 0) return null;

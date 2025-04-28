@@ -232,7 +232,7 @@ namespace BlogApp.BLL.Services
                 if (article.AuthorId == userId) return true;
 
                 var user = await _userManager.FindByIdAsync(userId);
-                if (user != null && (await _userManager.IsInRoleAsync(user, AppRoles.Author) || await _userManager.IsInRoleAsync(user, AppRoles.Administrator))) return true;
+                if (user != null && await _userManager.IsInRoleAsync(user, AppRoles.Administrator)) return true;
 
                 _logger.LogWarning("Authorization denied for user {UserId} on article {ArticleId}. User is not author or admin.", userId, articleId);
                 return false;
