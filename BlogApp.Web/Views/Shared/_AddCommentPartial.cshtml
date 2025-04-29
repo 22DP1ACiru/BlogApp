@@ -1,0 +1,23 @@
+﻿@model BlogApp.Web.Models.CreateCommentViewModel
+
+<div class="card mt-4">
+    <div class="card-header">
+        Leave a Comment
+    </div>
+    <div class="card-body">
+        <form asp-controller="Comments" asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+            <input type="hidden" asp-for="ArticleId" value="@ViewData["ArticleId"]" />
+
+            <div class="mb-3">
+                <label asp-for="Content" class="form-label visually-hidden">Comment</label> @* Hide label visually if context is clear *@
+                <textarea asp-for="Content" class="form-control" rows="4" placeholder="Write your comment here..."></textarea>
+                <span asp-validation-for="Content" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit Comment</button>
+        </form>
+    </div>
+</div>

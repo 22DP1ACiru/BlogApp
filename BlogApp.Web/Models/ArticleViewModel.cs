@@ -11,7 +11,10 @@
         public string? AuthorProfilePictureUrl { get; set; }
         public bool IsPublished { get; set; }
 
-        // Flag to indicate if the current logged-in user can edit/delete this article
         public bool CanModify { get; set; } = false;
+        public int Score { get; set; } = 0; 
+        public int? CurrentUserVote { get; set; } = null;
+
+        public List<CommentViewModel> Comments { get; set; } = new List<CommentViewModel>();
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace BlogApp.Web.Controllers
 {
@@ -48,10 +49,49 @@ namespace BlogApp.Web.Controllers
             return View(userRoleViewModels);
         }
 
-        // POST: /Admin/AssignAuthorRole
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AssignAuthorRole(string userId)
+        {
+            return await AssignRoleAsync(userId, AppRoles.Author);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveAuthorRole(string userId)
+        {
+            return await RemoveRoleAsync(userId, AppRoles.Author);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignRankerRole(string userId)
+        {
+            return await AssignRoleAsync(userId, AppRoles.Ranker);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveRankerRole(string userId)
+        {
+            return await RemoveRoleAsync(userId, AppRoles.Ranker);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignCommenterRole(string userId)
+        {
+            return await AssignRoleAsync(userId, AppRoles.Commenter);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveCommenterRole(string userId)
+        {
+            return await RemoveRoleAsync(userId, AppRoles.Commenter);
+        }
+
+        private async Task<IActionResult> AssignRoleAsync(string userId, string roleName)
         {
             if (string.IsNullOrEmpty(userId)) return BadRequest("User ID cannot be empty.");
 
@@ -62,40 +102,35 @@ namespace BlogApp.Web.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (!await _roleManager.RoleExistsAsync(AppRoles.Author))
+            if (!await _roleManager.RoleExistsAsync(roleName))
             {
-                _logger.LogError("'{RoleName}' role does not exist. Run seeder.", AppRoles.Author);
-                TempData["ErrorMessage"] = $"Role '{AppRoles.Author}' does not exist.";
+                _logger.LogError("'{RoleName}' role does not exist. Run seeder.", roleName);
+                TempData["ErrorMessage"] = $"Role '{roleName}' does not exist.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Check if user already has the role
-            if (await _userManager.IsInRoleAsync(user, AppRoles.Author))
+            if (await _userManager.IsInRoleAsync(user, roleName))
             {
-                TempData["WarningMessage"] = $"User '{user.UserName}' already has the '{AppRoles.Author}' role.";
+                TempData["WarningMessage"] = $"User '{user.UserName}' already has the '{roleName}' role.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Assign the role
-            var result = await _userManager.AddToRoleAsync(user, AppRoles.Author);
+            var result = await _userManager.AddToRoleAsync(user, roleName);
             if (result.Succeeded)
             {
-                _logger.LogInformation("Assigned role '{RoleName}' to user '{UserName}' (ID: {UserId})", AppRoles.Author, user.UserName, userId);
-                TempData["SuccessMessage"] = $"Successfully assigned '{AppRoles.Author}' role to '{user.UserName}'.";
+                _logger.LogInformation("Assigned role '{RoleName}' to user '{UserName}' (ID: {UserId})", roleName, user.UserName, userId);
+                TempData["SuccessMessage"] = $"Successfully assigned '{roleName}' role to '{user.UserName}'.";
             }
             else
             {
-                _logger.LogError("Error assigning role '{RoleName}' to user '{UserName}'. Errors: {Errors}", AppRoles.Author, user.UserName, string.Join(", ", result.Errors.Select(e => e.Description)));
-                TempData["ErrorMessage"] = $"Error assigning role to '{user.UserName}'.";
+                _logger.LogError("Error assigning role '{RoleName}' to user '{UserName}'. Errors: {Errors}", roleName, user.UserName, string.Join(", ", result.Errors.Select(e => e.Description)));
+                TempData["ErrorMessage"] = $"Error assigning '{roleName}' role to '{user.UserName}'.";
             }
 
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: /Admin/RemoveAuthorRole
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RemoveAuthorRole(string userId)
+        private async Task<IActionResult> RemoveRoleAsync(string userId, string roleName)
         {
             if (string.IsNullOrEmpty(userId)) return BadRequest("User ID cannot be empty.");
 
@@ -106,24 +141,30 @@ namespace BlogApp.Web.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Check if user actually has the role
-            if (!await _userManager.IsInRoleAsync(user, AppRoles.Author))
+            var currentAdminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (roleName == AppRoles.Administrator && user.Id == currentAdminUserId)
             {
-                TempData["WarningMessage"] = $"User '{user.UserName}' does not have the '{AppRoles.Author}' role.";
+                _logger.LogWarning("Admin User {AdminUserId} attempted to remove their own Administrator role.", currentAdminUserId);
+                TempData["ErrorMessage"] = "Error: Cannot remove your own Administrator role.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Remove the role
-            var result = await _userManager.RemoveFromRoleAsync(user, AppRoles.Author);
+            if (!await _userManager.IsInRoleAsync(user, roleName))
+            {
+                TempData["WarningMessage"] = $"User '{user.UserName}' does not have the '{roleName}' role.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var result = await _userManager.RemoveFromRoleAsync(user, roleName);
             if (result.Succeeded)
             {
-                _logger.LogInformation("Removed role '{RoleName}' from user '{UserName}' (ID: {UserId})", AppRoles.Author, user.UserName, userId);
-                TempData["SuccessMessage"] = $"Successfully removed '{AppRoles.Author}' role from '{user.UserName}'.";
+                _logger.LogInformation("Removed role '{RoleName}' from user '{UserName}' (ID: {UserId})", roleName, user.UserName, userId);
+                TempData["SuccessMessage"] = $"Successfully removed '{roleName}' role from '{user.UserName}'.";
             }
             else
             {
-                _logger.LogError("Error removing role '{RoleName}' from user '{UserName}'. Errors: {Errors}", AppRoles.Author, user.UserName, string.Join(", ", result.Errors.Select(e => e.Description)));
-                TempData["ErrorMessage"] = $"Error removing role from '{user.UserName}'.";
+                _logger.LogError("Error removing role '{RoleName}' from user '{UserName}'. Errors: {Errors}", roleName, user.UserName, string.Join(", ", result.Errors.Select(e => e.Description)));
+                TempData["ErrorMessage"] = $"Error removing '{roleName}' role from '{user.UserName}'.";
             }
 
             return RedirectToAction(nameof(Index));

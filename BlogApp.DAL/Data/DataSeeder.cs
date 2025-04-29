@@ -3,16 +3,13 @@ using BlogApp.Core.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
+using System.Reflection;
 
 namespace BlogApp.DAL.Data
 {
     public static class DataSeeder
     {
-        public static async Task SeedRolesAndAdminAsync(IServiceProvider serviceProvider)
+           public static async Task SeedRolesAndAdminAsync(IServiceProvider serviceProvider)
         {
             // Get required services
             var logger = serviceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
@@ -22,13 +19,28 @@ namespace BlogApp.DAL.Data
             logger.LogInformation("Attempting to seed roles and admin user...");
 
             // --- Seed Roles ---
-            string[] roleNames = { AppRoles.Administrator, AppRoles.Author };
+            var roleNames = typeof(AppRoles)
+                .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                .Where(fi => fi.IsLiteral && !fi.IsInitOnly && fi.FieldType == typeof(string))
+                .Select(fi => (string)fi.GetRawConstantValue())
+                .ToList();
+
+            if (!roleNames.Any())
+            {
+                logger.LogWarning("No role constants found in AppRoles class using reflection.");
+            }
+            else
+            {
+                logger.LogInformation("Found roles to seed via reflection: {Roles}", string.Join(", ", roleNames));
+            }
+
             foreach (var roleName in roleNames)
             {
+                if (string.IsNullOrWhiteSpace(roleName)) continue; // Skip if somehow a constant is empty
+
                 var roleExist = await roleManager.RoleExistsAsync(roleName);
                 if (!roleExist)
                 {
-                    // Create the role
                     var roleResult = await roleManager.CreateAsync(new IdentityRole(roleName));
                     if (roleResult.Succeeded)
                     {
@@ -36,7 +48,6 @@ namespace BlogApp.DAL.Data
                     }
                     else
                     {
-                        // Log errors
                         logger.LogError("Error creating role '{RoleName}'. Errors: {Errors}", roleName, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
                     }
                 }
