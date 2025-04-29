@@ -24,9 +24,8 @@
                 }
             </p>
 
-            @* --- Score and Voting Section --- *@
+            @* Score and Voting Section *@
             <div class="text-end">
-                @* Align right *@
                 <span class="me-3">Score: <strong class="fs-5 @(Model.Score > 0 ? "text-success" : (Model.Score < 0 ? "text-danger" : ""))">@Model.Score</strong></span>
 
                 @if (canRank) @* Show voting buttons only if user can rank *@
@@ -64,8 +63,8 @@
 
     @if (!string.IsNullOrEmpty(Model.ImageUrl))
     {
-        <figure class="mb-4 text-center"> @* Center the image *@
-    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded shadow-sm" /> @* Make image responsive and add shadow *@
+        <figure class="mb-4 text-center">
+    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded shadow-sm" />
     </figure>
     }
 
@@ -110,16 +109,15 @@
 
     <hr />
 
-    @* Display "Add Comment" form if user is allowed *@
     @if (ViewBag.CanComment == true)
     {
         <partial name="_AddCommentPartial" model="new CreateCommentViewModel()" view-data='new ViewDataDictionary(ViewData) { { "ArticleId", Model.Id } }' />
     }
-    else if (User.Identity?.IsAuthenticated == false) // Show login prompt if anonymous
+    else if (User.Identity?.IsAuthenticated == false)
     {
         <p><a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path">Log in</a> to leave a comment.</p>
     }
-    else // Show message if logged in but lacks permission
+    else
     {
         <p class="text-muted">You do not have permission to leave comments.</p>
     }
@@ -127,13 +125,13 @@
 </section>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" /> @* Keep for add comment form *@
+    <partial name="_ValidationScriptsPartial" />
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const commentsSection = document.getElementById('comments');
 
             if (commentsSection) {
-                // --- Edit Button Click ---
+                // Edit Button Click
                 commentsSection.addEventListener('click', function (event) {
                     if (event.target.classList.contains('edit-comment-button')) {
                         const button = event.target;
@@ -143,17 +141,17 @@
                         if (commentContainer) {
                             const displayDiv = commentContainer.querySelector('.comment-display');
                             const editFormDiv = commentContainer.querySelector('.comment-edit-form');
-                            const actionsDiv = commentContainer.querySelector('.comment-actions'); // Hide actions while editing
+                            const actionsDiv = commentContainer.querySelector('.comment-actions');
 
                             if (displayDiv && editFormDiv) {
                                 displayDiv.style.display = 'none';
-                                if (actionsDiv) actionsDiv.style.display = 'none'; // Hide Edit/Delete buttons
+                                if (actionsDiv) actionsDiv.style.display = 'none';
                                 editFormDiv.style.display = 'block';
                             }
                         }
                     }
 
-                    // --- Cancel Button Click ---
+                    //. Cancel Button Click
                     if (event.target.classList.contains('cancel-edit-comment')) {
                         const button = event.target;
                         const commentId = button.getAttribute('data-comment-id');
@@ -166,8 +164,8 @@
 
                             if (displayDiv && editFormDiv) {
                                 editFormDiv.style.display = 'none';
-                                displayDiv.style.display = 'block'; // Or reset to default display if needed
-                                if (actionsDiv) actionsDiv.style.display = ''; // Show Edit/Delete buttons again
+                                displayDiv.style.display = 'block';
+                                if (actionsDiv) actionsDiv.style.display = '';
                             }
                         }
                     }

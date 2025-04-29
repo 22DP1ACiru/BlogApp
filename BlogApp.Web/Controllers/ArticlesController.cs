@@ -110,7 +110,8 @@ namespace BlogApp.Web.Controllers
                         AuthorUsername = comment.User?.UserName ?? "Unknown",
                         AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
                         AuthorId = comment.UserId,
-                        CanModify = await _commentService.CanUserModifyCommentAsync(comment.Id, currentUserId)
+                        CanEdit = await _commentService.CanUserEditCommentAsync(comment.Id, currentUserId),
+                        CanDelete = await _commentService.CanUserDeleteCommentAsync(comment.Id, currentUserId)
                     });
                 }
             }
@@ -127,7 +128,8 @@ namespace BlogApp.Web.Controllers
                         AuthorUsername = comment.User?.UserName ?? "Unknown",
                         AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
                         AuthorId = comment.UserId,
-                        CanModify = false
+                        CanEdit = false,
+                        CanDelete = false
                     });
                 }
             }

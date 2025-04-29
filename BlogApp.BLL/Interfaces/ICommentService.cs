@@ -9,7 +9,8 @@ namespace BlogApp.BLL.Interfaces
         Task<Comment?> AddCommentAsync(Comment comment, int articleId, string userId);
         Task<bool> UpdateCommentAsync(Comment commentToUpdate);
         Task<bool> DeleteCommentAsync(int commentId);
-        Task<bool> CanUserModifyCommentAsync(int commentId, string userId);
+        Task<bool> CanUserEditCommentAsync(int commentId, string userId);
+        Task<bool> CanUserDeleteCommentAsync(int commentId, string userId);
         Task<bool> CanUserCommentAsync(string userId);
     }
 }

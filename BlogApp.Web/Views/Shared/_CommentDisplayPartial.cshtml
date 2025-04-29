@@ -1,49 +1,62 @@
 ﻿@model BlogApp.Web.Models.CommentViewModel
 
-<div class="d-flex mb-3 border-bottom pb-3" id="comment-@Model.Id">
+<div class="d-flex mb-3 border-bottom pb-3 comment-container" id="comment-@Model.Id">
     <div class="flex-shrink-0 me-3">
         <img src="@(Model.AuthorProfilePictureUrl ?? "/images/default-profile.png")" alt="@Model.AuthorUsername" class="rounded-circle" style="width: 50px; height: 50px;">
     </div>
     <div class="flex-grow-1">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h6 class="mt-0 mb-1">@Model.AuthorUsername</h6>
-                <small class="text-muted">@Model.CreatedDate.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
-                @if (Model.LastUpdatedDate.HasValue)
-                {
-                    <small class="text-muted fst-italic"> (edited @Model.LastUpdatedDate.Value.ToString("MMM dd, h:mm tt"))</small>
-                }
-            </div>
-            @if (Model.CanModify)
-            {
-                <div class="comment-actions">
-                    @* Edit Form *@
-                    <div class="comment-edit-form" style="display: none;">
-                        <form asp-controller="Comments" asp-action="Edit" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="Id" value="@Model.Id" />
-                            <input type="hidden" name="ArticleId" value="@ViewData["ArticleId"]" />
-
-                            <div class="mb-2">
-                                <textarea name="Content" class="form-control" rows="3">@Model.Content</textarea>
-                            </div>
-                            <div>
-                                <button type="submit" class="btn btn-sm btn-primary me-1">Save</button>
-                                <button type="button" class="btn btn-sm btn-secondary cancel-edit-comment" data-comment-id="@Model.Id">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    @* Delete Form *@
-                    <form asp-controller="Comments" asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this comment?');">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="commentId" value="@Model.Id" />
-                        <input type="hidden" name="articleId" value="@ViewContext.RouteData.Values["id"]" />
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                    </form>
+        <div class="comment-display">
+            <div class="d-flex justify-content-between align-items-center">
+                @* User Info & Date *@
+                <div>
+                    <h6 class="mt-0 mb-1">@Model.AuthorUsername</h6>
+                    <small class="text-muted">@Model.CreatedDate.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+                    @if (Model.LastUpdatedDate.HasValue)
+                    {
+                        <small class="text-muted fst-italic"> (edited @Model.LastUpdatedDate.Value.ToString("MMM dd, h:mm tt"))</small>
+                    }
                 </div>
-            }
+                @* Initial Action Buttons (Edit/Delete) *@
+                <div class="comment-actions-display">
+                    @if (Model.CanEdit)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-1 edit-comment-button" data-comment-id="@Model.Id">Edit</button>
+                    }
+                   
+                    @if (Model.CanDelete)
+                    {
+                        <form asp-controller="Comments" asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this comment?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@Model.Id" />
+                            <input type="hidden" name="articleId" value="@ViewData["ArticleId"]" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    }
+                </div>
+            </div>
+            @* Comment Text *@
+            <p class="mt-2 mb-0 card-text">@Html.DisplayFor(m => m.Content)</p>
         </div>
-        <p class="mt-2 mb-0 card-text">@Html.DisplayFor(m => m.Content)</p> @* Display content safely *@
+
+
+        @* Edit Form Area *@
+        @if (Model.CanEdit)
+        {
+            <div class="comment-edit-form mt-2" style="display: none;">
+                <form asp-controller="Comments" asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <input type="hidden" name="ArticleId" value="@ViewData["ArticleId"]" />
+
+                    <div class="mb-2">
+                        <textarea name="Content" class="form-control" rows="3">@Model.Content</textarea>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-sm btn-primary me-1">Save Changes</button>
+                        <button type="button" class="btn btn-sm btn-secondary cancel-edit-comment" data-comment-id="@Model.Id">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        }
     </div>
 </div>

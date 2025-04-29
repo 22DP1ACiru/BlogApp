@@ -77,7 +77,7 @@ namespace BlogApp.Web.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Challenge();
 
-            if (!await _commentService.CanUserModifyCommentAsync(model.Id, userId))
+            if (!await _commentService.CanUserEditCommentAsync(model.Id, userId))
             {
                 _logger.LogWarning("User {UserId} forbidden from POSTING edit for comment {CommentId}.", userId, model.Id);
                 return Forbid();
@@ -117,7 +117,7 @@ namespace BlogApp.Web.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Challenge();
 
-            if (!await _commentService.CanUserModifyCommentAsync(commentId, userId))
+            if (!await _commentService.CanUserDeleteCommentAsync(commentId, userId))
             {
                 _logger.LogWarning("User {UserId} forbidden from deleting comment {CommentId}.", userId, commentId);
                 TempData["ErrorMessage"] = "You do not have permission to delete this comment.";

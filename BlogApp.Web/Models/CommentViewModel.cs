@@ -12,6 +12,7 @@ namespace BlogApp.Web.Models
         public string? AuthorProfilePictureUrl { get; set; }
         public string AuthorId { get; set; }
 
-        public bool CanModify { get; set; } = false;
+        public bool CanEdit { get; set; } = false;
+        public bool CanDelete { get; set; } = false;
     }
 }

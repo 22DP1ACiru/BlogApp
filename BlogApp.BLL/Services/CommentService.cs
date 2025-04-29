@@ -131,25 +131,59 @@ namespace BlogApp.BLL.Services
             }
         }
 
-        public async Task<bool> CanUserModifyCommentAsync(int commentId, string userId)
+        public async Task<bool> CanUserEditCommentAsync(int commentId, string userId)
         {
             if (string.IsNullOrWhiteSpace(userId)) return false;
 
             try
             {
                 var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-                if (comment == null) return false;
+                if (comment == null)
+                {
+                    _logger.LogWarning("Edit check failed: Comment {CommentId} not found.", commentId);
+                    return false;
+                }
+
+                bool isAuthor = comment.UserId == userId;
+
+                if (!isAuthor)
+                {
+                    _logger.LogWarning("Edit permission denied for user {UserId} on comment {CommentId}. User is not the author.", userId, commentId);
+                }
+
+                return isAuthor;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking edit permission for Comment {CommentId} by User {UserId}", commentId, userId);
+                return false;
+            }
+        }
+
+        public async Task<bool> CanUserDeleteCommentAsync(int commentId, string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return false;
+
+            try
+            {
+                var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+                if (comment == null)
+                {
+                    _logger.LogWarning("Delete check failed: Comment {CommentId} not found.", commentId);
+                    return false;
+                }
 
                 if (comment.UserId == userId) return true;
 
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user != null && await _userManager.IsInRoleAsync(user, AppRoles.Administrator)) return true;
 
+                _logger.LogWarning("Delete permission denied for user {UserId} on comment {CommentId}. User is not author or admin.", userId, commentId);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking modify permission for Comment {CommentId} by User {UserId}", commentId, userId);
+                _logger.LogError(ex, "Error checking delete permission for Comment {CommentId} by User {UserId}", commentId, userId);
                 return false;
             }
         }
