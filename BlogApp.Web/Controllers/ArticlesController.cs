@@ -12,17 +12,23 @@ namespace BlogApp.Web.Controllers
     public class ArticlesController : Controller
     {
         private readonly IArticleService _articleService;
+        private readonly IRankingService _rankingService;
+        private readonly ICommentService _commentService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<ArticlesController> _logger;
 
         public ArticlesController(
             IArticleService articleService,
+            IRankingService rankingService,
+            ICommentService commentService,
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment webHostEnvironment,
             ILogger<ArticlesController> logger)
         {
             _articleService = articleService;
+            _rankingService = rankingService;
+            _commentService = commentService;
             _userManager = userManager;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
@@ -66,6 +72,10 @@ namespace BlogApp.Web.Controllers
             // Check if published or user has rights
             bool canView = article.IsPublished;
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get current user ID (null if anonymous)
+            bool canModify = false;
+            bool canRank = false;
+            bool canComment = false;
+
             if (!canView && currentUserId != null) // Check modify rights only if not published and user is logged in
             {
                 canView = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
@@ -74,14 +84,54 @@ namespace BlogApp.Web.Controllers
             if (!canView)
             {
                 _logger.LogWarning("Access denied for article ID {ArticleId}. Not published and user (if any) lacks permission.", id);
-                return User.Identity.IsAuthenticated ? Forbid() : NotFound();
+                return (User.Identity?.IsAuthenticated == true) ? Forbid() : NotFound();
             }
 
-            // Determine if the current user (if any) can modify THIS specific article
-            bool canModify = false;
+            int score = await _rankingService.GetArticleScoreAsync(id);
+            int? currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
+            var comments = await _commentService.GetCommentsByArticleIdAsync(id);
+            var commentViewModels = new List<CommentViewModel>();
+
             if (currentUserId != null)
             {
                 canModify = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
+                canRank = await _rankingService.CanUserRankAsync(currentUserId);
+                canComment = await _commentService.CanUserCommentAsync(currentUserId);
+                currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
+
+                foreach (var comment in comments)
+                {
+                    commentViewModels.Add(new CommentViewModel
+                    {
+                        Id = comment.Id,
+                        Content = comment.Content,
+                        CreatedDate = comment.CreatedDate,
+                        LastUpdatedDate = comment.LastUpdatedDate,
+                        AuthorUsername = comment.User?.UserName ?? "Unknown",
+                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
+                        AuthorId = comment.UserId,
+                        CanEdit = await _commentService.CanUserEditCommentAsync(comment.Id, currentUserId),
+                        CanDelete = await _commentService.CanUserDeleteCommentAsync(comment.Id, currentUserId)
+                    });
+                }
+            }
+            else
+            {
+                foreach (var comment in comments)
+                {
+                    commentViewModels.Add(new CommentViewModel
+                    {
+                        Id = comment.Id,
+                        Content = comment.Content,
+                        CreatedDate = comment.CreatedDate,
+                        LastUpdatedDate = comment.LastUpdatedDate,
+                        AuthorUsername = comment.User?.UserName ?? "Unknown",
+                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
+                        AuthorId = comment.UserId,
+                        CanEdit = false,
+                        CanDelete = false
+                    });
+                }
             }
 
             var viewModel = new ArticleViewModel
@@ -94,10 +144,41 @@ namespace BlogApp.Web.Controllers
                 AuthorName = article.Author?.UserName ?? "Unknown",
                 AuthorProfilePictureUrl = article.Author?.ProfilePictureUrl,
                 IsPublished = article.IsPublished,
-                CanModify = canModify
+                CanModify = canModify,
+                Score = score,
+                CurrentUserVote = currentUserVote,
+                Comments = commentViewModels
             };
 
+            ViewBag.CanRank = canRank;
+            ViewBag.CanComment = canComment;
+
             return View(viewModel);
+        }
+
+        // Vote action
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = $"{AppRoles.Ranker},{AppRoles.Administrator}")]
+        public async Task<IActionResult> Vote(int articleId, int voteValue)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Challenge();
+
+            if (voteValue != 1 && voteValue != -1)
+            {
+                TempData["ErrorMessage"] = "Invalid vote value.";
+                return RedirectToAction(nameof(Details), new { id = articleId });
+            }
+
+            bool success = await _rankingService.VoteAsync(articleId, userId, voteValue);
+
+            if (!success)
+            {
+                TempData["ErrorMessage"] = "Could not process your vote at this time.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = articleId });
         }
 
         // GET: /Articles/MyArticles (Logged-in user's articles)
@@ -395,7 +476,6 @@ namespace BlogApp.Web.Controllers
 
 
         // --- Private Helper Methods ---
-
         private async Task<string?> SaveArticleImageAsync(IFormFile image)
         {
             if (image == null || image.Length == 0) return null;

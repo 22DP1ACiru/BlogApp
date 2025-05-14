@@ -1,0 +1,42 @@
+﻿@model BlogApp.Web.Models.ArticleViewModel
+
+<div class="card mb-4 shadow-sm">
+    <div class="row g-0">
+        <div class="col-md-4">
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <a asp-controller="Articles" asp-action="Details" asp-route-id="@Model.Id" class="d-block h-100">
+                    <img src="@Model.ImageUrl" class="img-fluid rounded-start" alt="@Model.Title" style="height: 100%; width: 100%; object-fit: cover;"> @* Ensure image fills width/height *@
+                </a>
+            }
+            else
+            {
+                <div class="d-flex align-items-center justify-content-center h-100" style="background-color: #e9ecef; border-top-left-radius: var(--bs-card-inner-border-radius); border-bottom-left-radius: var(--bs-card-inner-border-radius);">
+                    <span class="text-muted small">No Image</span>
+                </div>
+            }
+        </div>
+
+        @* Text Content *@
+        <div class="col-md-8">
+            <div class="card-body d-flex flex-column h-100">
+                <h5 class="card-title">
+                    <a asp-controller="Articles" asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-dark stretched-link">
+                        @Html.DisplayFor(modelItem => Model.Title)
+                    </a>
+                </h5>
+                <p class="card-text mb-1">
+                    <small class="text-muted">
+                        By @Html.DisplayFor(modelItem => Model.AuthorName) on @Model.PublishedDate.ToString("MMM dd, yyyy")
+                    </small>
+                </p>
+                <p class="card-text flex-grow-1">
+                    @Html.DisplayFor(model => model.Content)
+                </p>
+                <div class="mt-auto text-end position-relative">
+                    <a asp-controller="Articles" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">Read More »</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

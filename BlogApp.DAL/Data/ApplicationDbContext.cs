@@ -12,6 +12,8 @@ namespace BlogApp.DAL.Data
         }
 
         public DbSet<Article> Articles { get; set; }
+        public DbSet<ArticleVote> ArticleVotes { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -35,7 +37,54 @@ namespace BlogApp.DAL.Data
                 .WithMany()
                 .HasForeignKey(a => a.AuthorId)
                 .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            builder.Entity<ArticleVote>().ToTable("ArticleVotes");
+            
+            builder.Entity<ArticleVote>().HasKey(av => av.Id);
+
+            builder.Entity<ArticleVote>()
+                .HasOne(av => av.Article)
+                .WithMany()
+                .HasForeignKey(av => av.ArticleId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ArticleVote>()
+                .HasOne(av => av.User)
+                .WithMany()
+                .HasForeignKey(av => av.UserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique constraint to prevent multiple votes per user per article
+            builder.Entity<ArticleVote>()
+                .HasIndex(av => new { av.ArticleId, av.UserId })
+                .IsUnique();
+
+
+            builder.Entity<Comment>().ToTable("Comments");
+            builder.Entity<Comment>().HasKey(c => c.Id);
+
+            builder.Entity<Comment>()
+                .Property(c => c.Content)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            builder.Entity<Comment>()
+                .HasOne(c => c.Article)
+                .WithMany()
+                .HasForeignKey(c => c.ArticleId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Comment>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

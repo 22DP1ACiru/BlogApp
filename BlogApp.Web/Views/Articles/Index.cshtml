@@ -7,8 +7,7 @@
 
 <h1>@ViewData["Title"]</h1>
 
-@* Add "Create New" link only if user is logged in and is Author or Admin *@
-@if (User.Identity != null && User.Identity.IsAuthenticated)
+@if (User.Identity != null && User.Identity.IsAuthenticated && (User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Administrator)))
 {
     <p>
         <a asp-action="Create" class="btn btn-primary mb-3">Create New Article</a>
