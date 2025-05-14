@@ -1,4 +1,5 @@
-﻿using BlogApp.BLL.Interfaces;
+﻿using BlogApp.BLL.Helpers;
+using BlogApp.BLL.Interfaces;
 using BlogApp.Core.Constants;
 using BlogApp.Core.Entities;
 using BlogApp.DAL.Interfaces;
@@ -22,9 +23,12 @@ namespace BlogApp.BLL.Services
 
         public async Task<bool> CanUserRankAsync(string userId)
         {
-            if (string.IsNullOrWhiteSpace(userId)) return false;
-            var user = await _userManager.FindByIdAsync(userId);
-            return user != null && (await _userManager.IsInRoleAsync(user, AppRoles.Ranker) || await _userManager.IsInRoleAsync(user, AppRoles.Administrator));
+            var allowedRoles = new[] { AppRoles.Ranker, AppRoles.Administrator };
+
+            return await UserRoleHelper.IsUserInAnyRoleAsync(
+                _userManager,
+                userId,
+                allowedRoles);
         }
 
         public async Task<bool> VoteAsync(int articleId, string userId, int voteValue)

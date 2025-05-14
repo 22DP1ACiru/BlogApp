@@ -1,4 +1,5 @@
-﻿using BlogApp.BLL.Interfaces;
+﻿    using BlogApp.BLL.Interfaces;
+    using BlogApp.BLL.Helpers;
 using BlogApp.Core.Constants;
 using BlogApp.Core.Entities;
 using BlogApp.DAL.Interfaces;
@@ -22,9 +23,12 @@ namespace BlogApp.BLL.Services
 
         public async Task<bool> CanUserCommentAsync(string userId)
         {
-            if (string.IsNullOrWhiteSpace(userId)) return false;
-            var user = await _userManager.FindByIdAsync(userId);
-            return user != null && (await _userManager.IsInRoleAsync(user, AppRoles.Commenter) || await _userManager.IsInRoleAsync(user, AppRoles.Administrator));
+            var allowedRoles = new[] { AppRoles.Commenter, AppRoles.Administrator };
+
+            return await UserRoleHelper.IsUserInAnyRoleAsync(
+                _userManager,
+                userId,
+                allowedRoles);
         }
 
         public async Task<IEnumerable<Comment>> GetCommentsByArticleIdAsync(int articleId)
@@ -90,7 +94,7 @@ namespace BlogApp.BLL.Services
 
         public async Task<bool> UpdateCommentAsync(Comment commentToUpdate)
         {
-            if (commentToUpdate == null) { /* Log */ return false; }
+            if (commentToUpdate == null) { return false; }
 
             try
             {
@@ -175,8 +179,10 @@ namespace BlogApp.BLL.Services
 
                 if (comment.UserId == userId) return true;
 
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null && await _userManager.IsInRoleAsync(user, AppRoles.Administrator)) return true;
+                if (await UserRoleHelper.IsUserInRoleAsync(_userManager, userId, AppRoles.Administrator))
+                {
+                    return true;
+                }
 
                 _logger.LogWarning("Delete permission denied for user {UserId} on comment {CommentId}. User is not author or admin.", userId, commentId);
                 return false;
