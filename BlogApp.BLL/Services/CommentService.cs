@@ -35,7 +35,8 @@ namespace BlogApp.BLL.Services
         {
             try
             {
-                return await _unitOfWork.Comments.GetCommentsByArticleIdAsync(articleId);
+                var comments = await _unitOfWork.Comments.GetCommentsByArticleIdAsync(articleId);
+                return comments.Where(c => !c.IsBlocked);
             }
             catch (Exception ex)
             {
