@@ -10,6 +10,7 @@ namespace BlogApp.DAL
         private IArticleRepository? _articleRepository;
         private IArticleVoteRepository? _articleVoteRepository;
         private ICommentRepository? _commentRepository;
+        private ICommentReportRepository? _commentReportRepository;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -19,6 +20,7 @@ namespace BlogApp.DAL
         public IArticleRepository Articles => _articleRepository ??= new ArticleRepository(_context);
         public IArticleVoteRepository ArticleVotes => _articleVoteRepository ??= new ArticleVoteRepository(_context);
         public ICommentRepository Comments => _commentRepository ??= new CommentRepository(_context);
+        public ICommentReportRepository CommentReports => _commentReportRepository ??= new CommentReportRepository(_context);
 
         /// <summary>
         /// Saves all changes made in this context to the database.

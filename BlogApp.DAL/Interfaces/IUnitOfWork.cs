@@ -8,6 +8,7 @@ namespace BlogApp.DAL.Interfaces
         IArticleRepository Articles { get; }
         IArticleVoteRepository ArticleVotes { get; }
         ICommentRepository Comments { get; }
+        ICommentReportRepository CommentReports { get; }
 
         Task<int> CompleteAsync();
     }
