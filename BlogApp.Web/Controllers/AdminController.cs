@@ -1,5 +1,6 @@
 ﻿using BlogApp.Core.Constants;
 using BlogApp.Core.Entities;
+using BlogApp.BLL.Interfaces;
 using BlogApp.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,15 +14,18 @@ namespace BlogApp.Web.Controllers
     public class AdminController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IModerationService _moderationService;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
             UserManager<ApplicationUser> userManager,
+            IModerationService moderationService,
             RoleManager<IdentityRole> roleManager,
             ILogger<AdminController> logger)
         {
             _userManager = userManager;
+            _moderationService = moderationService;
             _roleManager = roleManager;
             _logger = logger;
         }
@@ -168,6 +172,78 @@ namespace BlogApp.Web.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: /Admin/ReportedComments
+        [HttpGet]
+        public async Task<IActionResult> ReportedComments()
+        {
+            var reports = await _moderationService.GetPendingReportsAsync();
+
+            var viewModels = reports.Select(r => new CommentReportViewModel
+            {
+                ReportId = r.Id,
+                CommentId = r.CommentId,
+                ReportedCommentContent = r.Comment?.Content?.Length > 100 ? r.Comment.Content.Substring(0, 100) + "..." : r.Comment?.Content ?? "[Comment Deleted]",
+                ReporterUsername = r.ReporterUser?.UserName ?? "Unknown",
+                ReportDate = r.ReportDate,
+                Reason = r.Reason,
+                Status = r.Status,
+                ArticleId = r.Comment?.ArticleId ?? 0,
+                ArticleTitle = r.Comment?.Article?.Title ?? "[Article Deleted]"
+            }).ToList();
+
+            return View(viewModels);
+        }
+
+        // POST: /Admin/BlockComment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BlockComment(int commentId, int? reportId = null)
+        {
+            var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (adminUserId == null) return Challenge();
+
+            bool success = await _moderationService.BlockCommentAsync(commentId, adminUserId);
+
+            if (success) TempData["SuccessMessage"] = "Comment blocked successfully.";
+            else TempData["ErrorMessage"] = "Failed to block comment (it might already be blocked or deleted).";
+
+            if (reportId.HasValue) return RedirectToAction(nameof(ReportedComments));
+            else return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Admin/UnblockComment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UnblockComment(int commentId)
+        {
+            var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (adminUserId == null) return Challenge();
+
+            bool success = await _moderationService.UnblockCommentAsync(commentId, adminUserId);
+
+            if (success) TempData["SuccessMessage"] = "Comment unblocked successfully.";
+            else TempData["ErrorMessage"] = "Failed to unblock comment (it might not be blocked or doesn't exist).";
+
+            return RedirectToAction(nameof(ReportedComments));
+        }
+
+
+        // POST: /Admin/DismissReport
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DismissReport(int reportId)
+        {
+            var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (adminUserId == null) return Challenge();
+
+            bool success = await _moderationService.DismissReportAsync(reportId, adminUserId);
+
+            if (success) TempData["SuccessMessage"] = "Report dismissed successfully.";
+            else TempData["ErrorMessage"] = "Failed to dismiss report (it might have already been actioned).";
+
+            return RedirectToAction(nameof(ReportedComments));
         }
     }
 }

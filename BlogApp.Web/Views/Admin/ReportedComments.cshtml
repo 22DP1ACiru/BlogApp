@@ -1,0 +1,77 @@
+﻿@model List<BlogApp.Web.Models.CommentReportViewModel>
+
+@{
+    ViewData["Title"] = "Pending Comment Reports";
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+@if (TempData["SuccessMessage"] != null)
+{
+     <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+     <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p>There are no pending comment reports.</p>
+}
+else
+{
+    <p>Review the following comments that have been reported by users.</p>
+    <table class="table table-bordered table-hover table-sm">
+        <thead class="table-light">
+            <tr>
+                <th>Report Date</th>
+                <th>Reported By</th>
+                <th>Comment Preview</th>
+                <th>Reason</th>
+                <th>Article</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var report in Model)
+            {
+                <tr>
+                    <td>@report.ReportDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@report.ReporterUsername</td>
+                    <td>@Html.DisplayFor(m => report.ReportedCommentContent)</td>
+                    <td>@Html.DisplayFor(m => report.Reason)</td>
+                    <td>
+                        @* Link to the article where the comment is *@
+                        <a asp-controller="Articles" asp-action="Details" asp-route-id="@report.ArticleId" target="_blank">
+                            @report.ArticleTitle <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </td>
+                    <td>
+                        @* --- Admin Action Forms --- *@
+
+                        @* Form to Block Comment *@
+                        <form asp-action="BlockComment" method="post" class="d-inline me-1">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@report.CommentId" />
+                            <input type="hidden" name="reportId" value="@report.ReportId" />
+                            <button type="submit" class="btn btn-sm btn-danger" title="Block this Comment">Block</button>
+                        </form>
+
+                        @* Form to Dismiss Report *@
+                        <form asp-action="DismissReport" method="post" class="d-inline me-1">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="reportId" value="@report.ReportId" />
+                            <button type="submit" class="btn btn-sm btn-secondary" title="Dismiss this Report (comment is ok)">Dismiss</button>
+                        </form>
+
+                        @* Link to View Comment *@
+                        <a asp-controller="Articles" asp-action="Details" asp-route-id="@report.ArticleId" fragment="comment-@report.CommentId" target="_blank" class="btn btn-sm btn-info" title="View Comment in Context">View</a>
+
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

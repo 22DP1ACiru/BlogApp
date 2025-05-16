@@ -30,12 +30,15 @@
             <li class="nav-item">
                 <a class="nav-link text-info" asp-controller="Admin" asp-action="Index" title="Admin Area">Admin</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link text-warning" asp-controller="Admin" asp-action="ReportedComments" title="Moderate Reported Comments">Reports</a>
+            </li>
         }
 
         <li class="nav-item">
             @* Logout needs to be a form POST *@
             <form id="logoutForm" class="form-inline" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
-                @Html.AntiForgeryToken() @* Add AntiForgeryToken *@
+                @Html.AntiForgeryToken()
                 <button id="logout" type="submit" class="nav-link btn btn-link text-dark border-0">Logout</button>
             </form>
         </li>

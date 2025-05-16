@@ -124,6 +124,37 @@
 
 </section>
 
+@* Modal for comment reporting functionality *@
+<div class="modal fade" id="reportCommentModal" tabindex="-1" aria-labelledby="reportCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Comments" asp-action="Report" method="post" id="reportCommentForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="CommentId" id="reportModalCommentId" value="0" />
+                <input type="hidden" name="ArticleId" id="reportModalArticleId" value="@Model.Id" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reportCommentModalLabel">Report Comment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are reporting comment ID: <strong id="reportModalDisplayCommentId"></strong>.</p>
+                    <p>Please provide a brief reason for reporting (optional):</p>
+                    <div class="mb-3">
+                        <label for="reportModalReason" class="form-label visually-hidden">Reason</label>
+                        <textarea class="form-control" id="reportModalReason" name="Reason" rows="3" maxlength="500"></textarea>
+                    </div>
+                    <div id="reportModalError" class="text-danger small"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -151,7 +182,7 @@
                         }
                     }
 
-                    //. Cancel Button Click
+                    // Cancel Button Click
                     if (event.target.classList.contains('cancel-edit-comment')) {
                         const button = event.target;
                         const commentId = button.getAttribute('data-comment-id');
@@ -170,7 +201,28 @@
                         }
                     }
                 });
+
+        const reportModalElement = document.getElementById('reportCommentModal');
+        if (reportModalElement) {
+            reportModalElement.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const commentId = button.getAttribute('data-comment-id');
+                const articleId = button.getAttribute('data-article-id');
+
+                const modalCommentIdInput = reportModalElement.querySelector('#reportModalCommentId');
+                const modalArticleIdInput = reportModalElement.querySelector('#reportModalArticleId');
+                 const modalDisplayCommentId = reportModalElement.querySelector('#reportModalDisplayCommentId');
+                const modalReasonTextarea = reportModalElement.querySelector('#reportModalReason');
+                const modalErrorDiv = reportModalElement.querySelector('#reportModalError');
+
+                modalCommentIdInput.value = commentId;
+                modalArticleIdInput.value = articleId;
+                modalDisplayCommentId.textContent = commentId;
+                modalReasonTextarea.value = '';
+                modalErrorDiv.textContent = '';
+                });
             }
-        });
+        };
+    });
     </script>
 }
