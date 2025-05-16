@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BlogApp.Core.Entities
@@ -28,5 +27,7 @@ namespace BlogApp.Core.Entities
 
         [ForeignKey(nameof(UserId))]
         public virtual ApplicationUser User { get; set; }
+
+        public bool IsBlocked { get; set; } = false;
     }
 }
