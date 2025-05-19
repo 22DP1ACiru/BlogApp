@@ -109,11 +109,6 @@ namespace BlogApp.Web.Controllers
             if (userId == null) return Unauthorized();
 
             var article = _mapper.Map<Article>(createArticleDto);
-            // article.ImageUrl can be handled here if CreateArticleDto includes it and it's just a URL.
-            // If file upload is needed, it's more complex:
-            // - Use [FromForm] and include IFormFile in ViewModel/DTO
-            // - Call your SaveArticleImageAsync logic here
-            // - For this example, assume ImageUrl is simple or handled separately.
 
             var createdArticle = await _articleService.CreateArticleAsync(article, userId);
 
