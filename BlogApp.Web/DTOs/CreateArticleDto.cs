@@ -9,9 +9,9 @@ namespace BlogApp.Web.DTOs
         public string Title { get; set; }
 
         public string? Content { get; set; }
-        
-        public string? ImageUrl { get; set; }
-            
+
+        public IFormFile? Image { get; set; }
+
         public bool IsPublished { get; set; } = false;
     }
 }
