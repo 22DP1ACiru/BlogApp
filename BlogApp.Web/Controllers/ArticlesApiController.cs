@@ -50,12 +50,12 @@ namespace BlogApp.Web.Controllers
             if (image.Length > maxFileSize)
             {
                 _logger.LogWarning("Image upload failed: File size exceeds limit. Size: {FileSize}", image.Length);
-                throw new ArgumentException($"File size exceeds limit of {maxFileSize / 1024 / 1024} MB.");
+                throw new ArgumentException(string.Format(ApiMessages.ImageSizeExceeded, maxFileSize / 1024 / 1024));
             }
             if (!allowedContentTypes.Contains(image.ContentType.ToLowerInvariant()))
             {
                 _logger.LogWarning("Image upload failed: Invalid file type. Type: {ContentType}", image.ContentType);
-                throw new ArgumentException("Invalid file type. Only JPG, PNG, GIF allowed.");
+                throw new ArgumentException(ApiMessages.ImageInvalidType);
             }
 
             string relativeFolderPath = Path.Combine("images", "articles");
@@ -78,7 +78,7 @@ namespace BlogApp.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving article image file: {FileName}", image.FileName);
-                throw new IOException("Error saving image file. Please try again.", ex);
+                throw new IOException(ApiMessages.ImageSaveError, ex);
             }
         }
 
@@ -132,7 +132,7 @@ namespace BlogApp.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting article list for API.");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching articles.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ErrorOccurredFetchingList });
             }
         }
 
@@ -146,7 +146,7 @@ namespace BlogApp.Web.Controllers
                 var article = await _articleService.GetArticleByIdWithAuthorAsync(id);
                 if (article == null)
                 {
-                    return NotFound(new { message = $"Article with not found or access denied." });
+                    return NotFound(new { message = string.Format(ApiMessages.ArticleNotFoundById, id) });
                 }
 
                 bool canView = article.IsPublished;
@@ -160,8 +160,8 @@ namespace BlogApp.Web.Controllers
                 {
                     _logger.LogWarning("Access denied for article ID {ArticleId} for API. Not published and user (if any) lacks permission.", id);
                     return User.Identity?.IsAuthenticated == true ?
-                           StatusCode(StatusCodes.Status403Forbidden, new { message = "You do not have permission to view this article." }) :
-                           NotFound(new { message = "Article not found or access denied." });
+                           StatusCode(StatusCodes.Status403Forbidden, new { message = ApiMessages.ArticleNoPermissionToView }) :
+                           NotFound(new { message = ApiMessages.ArticleNotFound });
                 }
 
                 var articleDto = _mapper.Map<ArticleDto>(article);
@@ -172,7 +172,7 @@ namespace BlogApp.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting article detail for API (ID: {ArticleId}).", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching the article.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ErrorOccurredFetchingDetail });
             }
         }
 
@@ -182,10 +182,7 @@ namespace BlogApp.Web.Controllers
         [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]
         public async Task<ActionResult<ArticleDto>> CreateArticle([FromForm] CreateArticleDto createArticleDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
@@ -210,7 +207,7 @@ namespace BlogApp.Web.Controllers
                     // If service returned null, something went wrong
                     // In case an image was saved but DB op failed, try to delete the orphaned image
                     DeleteArticleImageFile(savedImageUrl);
-                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Article creation failed in the service layer." });
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ArticleCreationFailed });
                 }
 
                 var createdArticleDto = _mapper.Map<ArticleDto>(createdArticle);
@@ -226,14 +223,14 @@ namespace BlogApp.Web.Controllers
             catch (IOException ioEx) // From file saving in SaveArticleImageAsync
             {
                 _logger.LogError(ioEx, "IO error during image saving for article creation by User {UserId}.", userId);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error saving image file." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ImageSaveError });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "General error during article creation by User {UserId}.", userId);
                 // Attempt to delete uploaded image if an error occurred after it was saved
                 DeleteArticleImageFile(savedImageUrl);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred while creating the article." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.UnexpectedError });
             }
         }
 
@@ -242,24 +239,21 @@ namespace BlogApp.Web.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateArticle(int id, [FromForm] UpdateArticleDto updateArticleDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
-            if (!await _articleService.CanUserModifyArticleAsync(id, userId))
-            {
-                _logger.LogWarning("User {UserId} FORBIDDEN from updating Article {ArticleId}", userId, id);
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = "You do not have permission to update this article." });
-            }
-
             var articleFromDb = await _articleService.GetArticleByIdWithAuthorAsync(id);
             if (articleFromDb == null)
             {
-                return NotFound(new { message = $"Article not found or access denied." });
+                return NotFound(new { message = string.Format(ApiMessages.ArticleNotFoundById, id) });
+            }
+
+            if (!await _articleService.CanUserModifyArticleAsync(id, userId))
+            {
+                _logger.LogWarning("User {UserId} FORBIDDEN from updating Article {ArticleId}", userId, id);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ApiMessages.ArticleNoPermissionToUpdate });
             }
 
             string? oldImageUrl = articleFromDb.ImageUrl;
@@ -286,7 +280,7 @@ namespace BlogApp.Web.Controllers
                     {
                         DeleteArticleImageFile(newImageUrl);
                     }
-                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Article update failed." });
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ArticleUpdateFailed });
                 }
 
                 // If update succeeded and a new image was uploaded and it's different, delete the old image
@@ -305,14 +299,14 @@ namespace BlogApp.Web.Controllers
             catch (IOException ioEx) // From file saving
             {
                 _logger.LogError(ioEx, "IO error during new image saving for article update ID {ArticleId} by User {UserId}.", id, userId);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error saving new image file." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ImageSaveError });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "General error during article update for ID {ArticleId} by User {UserId}.", id, userId);
                 // If a new image was saved but subsequent error occurred, attempt to delete it
                 if (newImageUrl != oldImageUrl) DeleteArticleImageFile(newImageUrl);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred while updating the article." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.UnexpectedError });
             }
         }
 
@@ -328,19 +322,19 @@ namespace BlogApp.Web.Controllers
             if (article == null)
             {
                 _logger.LogWarning("Article {ArticleId} NOT FOUND for deletion attempt by User {UserId}.", id, userId);
-                return NotFound(new { message = $"Article not found or access denied." });
+                return NotFound(new { message = string.Format(ApiMessages.ArticleNotFoundById, id) });
             }
 
             if (!await _articleService.CanUserModifyArticleAsync(id, userId))
             {
                 _logger.LogWarning("User {UserId} FORBIDDEN from deleting Article {ArticleId}", userId, id);
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = "You do not have permission to perform this action." });
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ApiMessages.ArticleNoPermissionToDelete });
             }
 
             bool success = await _articleService.DeleteArticleAsync(id);
             if (!success)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Article deletion failed." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ApiMessages.ArticleDeletionFailed });
             }
 
             return NoContent();
