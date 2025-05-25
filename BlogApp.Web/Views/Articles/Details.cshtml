@@ -4,51 +4,60 @@
     ViewData["Title"] = Model.Title;
     bool canRank = ViewBag.CanRank ?? false;
     int? userVote = Model.CurrentUserVote;
+    var defaultProfilePic = "/images/default-profile.png";
+    var authorProfilePic = string.IsNullOrEmpty(Model.AuthorProfilePictureUrl) ? defaultProfilePic : Model.AuthorProfilePictureUrl;
 }
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["WarningMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["WarningMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
-<article>
+<article class="mb-5">
     <header class="mb-4">
-        <h1>@Html.DisplayFor(model => model.Title)</h1>
-        <div class="d-flex justify-content-between align-items-center">
-            <p class="text-muted mb-0">
-                Published on @Model.PublishedDate.ToString("MMMM dd, yyyy 'at' h:mm tt")
-                by @Model.AuthorName
-                @if (!string.IsNullOrEmpty(Model.AuthorProfilePictureUrl))
-                {
-                    <img src="@Model.AuthorProfilePictureUrl" alt="@Model.AuthorName" class="rounded-circle ms-1" style="width: 25px; height: 25px; object-fit: cover;" />
-                }
+        <h1 class="display-5 fw-bold">@Html.DisplayFor(model => model.Title)</h1>
+        <hr/>
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <p class="text-muted mb-2 me-3">
+                <img src="@authorProfilePic" alt="@Model.AuthorName" class="rounded-circle me-1 inline-profile-pic" />
+                Published by <strong>@Model.AuthorName</strong> on @Model.PublishedDate.ToString("MMMM dd, yyyy 'at' h:mm tt")
             </p>
 
-            @* Score and Voting Section *@
-            <div class="text-end">
-                <span class="me-3">Score: <strong class="fs-5 @(Model.Score > 0 ? "text-success" : (Model.Score < 0 ? "text-danger" : ""))">@Model.Score</strong></span>
-
-                @if (canRank) @* Show voting buttons only if user can rank *@
+            <div class="text-end mb-2">
+                <span class="me-3">Score: <strong class="fs-5 @(Model.Score > 0 ? "text-success" : (Model.Score < 0 ? "text-danger" : "text-secondary"))">@Model.Score</strong></span>
+                @if (canRank)
                 {
-                    @* Upvote Button/Form *@
                     <form asp-action="Vote" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="articleId" value="@Model.Id" />
-                        <input type="hidden" name="voteValue" value="1" /> @* Value for upvote *@
-                        <button type="submit" class="btn btn-sm @(userVote == 1 ? "btn-success" : "btn-outline-success")" title="Upvote">
-                            <i class="bi bi-arrow-up-circle-fill"></i>
-                            @* ▲ Upvote *@
+                        <input type="hidden" name="voteValue" value="1" />
+                        <button type="submit" class="btn btn-sm @(userVote == 1 ? "btn-success active" : "btn-outline-success")" title="Upvote">
+                            <i class="bi bi-hand-thumbs-up-fill"></i>
                         </button>
                     </form>
-
-                    @* Downvote Button/Form *@
                     <form asp-action="Vote" method="post" class="d-inline ms-1">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="articleId" value="@Model.Id" />
-                        <input type="hidden" name="voteValue" value="-1" /> @* Value for downvote *@
-                        <button type="submit" class="btn btn-sm @(userVote == -1 ? "btn-danger" : "btn-outline-danger")" title="Downvote">
-                            <i class="bi bi-arrow-down-circle-fill"></i>
-                            @* ▼ Downvote *@
+                        <input type="hidden" name="voteValue" value="-1" />
+                        <button type="submit" class="btn btn-sm @(userVote == -1 ? "btn-danger active" : "btn-outline-danger")" title="Downvote">
+                            <i class="bi bi-hand-thumbs-down-fill"></i>
                         </button>
                     </form>
                 }
@@ -57,44 +66,40 @@
 
         @if (!Model.IsPublished)
         {
-            <p><span class="badge bg-warning text-dark">Draft / Not Published</span></p>
+            <p><span class="badge bg-warning text-dark fs-6"><i class="bi bi-pencil-fill me-1"></i>Draft / Not Published</span></p>
         }
     </header>
 
     @if (!string.IsNullOrEmpty(Model.ImageUrl))
     {
         <figure class="mb-4 text-center">
-    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded shadow-sm" />
-    </figure>
+            <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded shadow-lg" style="max-height: 500px;" />
+        </figure>
     }
 
-    <section class="article-content">
-        @Html.Raw(Model.Content)
+    <section class="article-content mt-4">
+        @Html.Raw(Model.Content) @* Assuming content is HTML; if plain text, use @Html.DisplayFor *@
     </section>
 </article>
 
 <hr class="my-4" />
 
-@* Action buttons section *@
-<div class="d-flex justify-content-between align-items-center">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         @if (Model.CanModify)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary me-2">Edit</a>
-            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary me-2"><i class="bi bi-pencil-square me-1"></i>Edit</a>
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</a>
         }
     </div>
     <div>
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+        <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left-circle me-1"></i>Back to List</a>
     </div>
 </div>
 
-<hr class="my-4" />
+<section id="comments" class="mt-5 pt-4 border-top">
+    <h3 class="mb-4"><i class="bi bi-chat-dots-fill me-2"></i>Comments (@Model.Comments.Count(c => !c.IsBlocked || User.IsInRole(BlogApp.Core.Constants.AppRoles.Administrator)))</h3>
 
-<section id="comments" class="mt-5">
-    <h3>Comments (@Model.Comments.Count)</h3>
-
-    @* Display existing comments *@
     @if (Model.Comments.Any())
     {
         @foreach (var comment in Model.Comments)
@@ -104,51 +109,58 @@
     }
     else
     {
-        <p>Be the first to comment!</p>
+        <div class="alert alert-light text-center">
+             <i class="bi bi-chat-quote fs-1 d-block mb-2"></i>
+            Be the first to comment!
+        </div>
     }
 
-    <hr />
+    <hr class="my-4" />
 
     @if (ViewBag.CanComment == true)
     {
-        <partial name="_AddCommentPartial" model="new CreateCommentViewModel()" view-data='new ViewDataDictionary(ViewData) { { "ArticleId", Model.Id } }' />
+        <partial name="_AddCommentPartial" model='new CreateCommentViewModel { ArticleId = Model.Id }' />
     }
     else if (User.Identity?.IsAuthenticated == false)
     {
-        <p><a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path">Log in</a> to leave a comment.</p>
+        <div class="alert alert-info">
+            @{
+                var returnUrl = Context.Request.Path + Context.Request.QueryString;
+            }
+            <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl" class="alert-link">Log in</a> to leave a comment.
+        </div>
     }
     else
     {
-        <p class="text-muted">You do not have permission to leave comments.</p>
+        <p class="text-muted fst-italic">You do not have permission to leave comments at this time.</p>
     }
-
 </section>
 
 @* Modal for comment reporting functionality *@
 <div class="modal fade" id="reportCommentModal" tabindex="-1" aria-labelledby="reportCommentModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form asp-controller="Comments" asp-action="Report" method="post" id="reportCommentForm">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="CommentId" id="reportModalCommentId" value="0" />
                 <input type="hidden" name="ArticleId" id="reportModalArticleId" value="@Model.Id" />
 
-                <div class="modal-header">
-                    <h5 class="modal-title" id="reportCommentModalLabel">Report Comment</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="reportCommentModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Report Comment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>You are reporting comment ID: <strong id="reportModalDisplayCommentId"></strong>.</p>
-                    <p>Please provide a brief reason for reporting (optional):</p>
+                    <p>You are about to report comment ID: <strong id="reportModalDisplayCommentId" class="text-danger"></strong>.</p>
                     <div class="mb-3">
-                        <label for="reportModalReason" class="form-label visually-hidden">Reason</label>
-                        <textarea class="form-control" id="reportModalReason" name="Reason" rows="3" maxlength="500"></textarea>
+                        <label for="reportModalReason" class="form-label">Reason for Reporting (Optional):</label>
+                        <textarea class="form-control" id="reportModalReason" name="Reason" rows="3" maxlength="500" placeholder="e.g., spam, offensive content..."></textarea>
+                        <small class="form-text text-muted">Max 500 characters.</small>
                     </div>
                     <div id="reportModalError" class="text-danger small"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">Submit Report</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-send-fill me-1"></i>Submit Report</button>
                 </div>
             </form>
         </div>
@@ -164,65 +176,64 @@
             if (commentsSection) {
                 // Edit Button Click
                 commentsSection.addEventListener('click', function (event) {
-                    if (event.target.classList.contains('edit-comment-button')) {
-                        const button = event.target;
-                        const commentId = button.getAttribute('data-comment-id');
+                    const targetButton = event.target.closest('.edit-comment-button');
+                    if (targetButton) {
+                        const commentId = targetButton.getAttribute('data-comment-id');
                         const commentContainer = document.getElementById(`comment-${commentId}`);
 
                         if (commentContainer) {
-                            const displayDiv = commentContainer.querySelector('.comment-display');
+                            const displayDiv = commentContainer.querySelector('.comment-display-content');
                             const editFormDiv = commentContainer.querySelector('.comment-edit-form');
-                            const actionsDiv = commentContainer.querySelector('.comment-actions');
+                            const actionsDiv = commentContainer.querySelector('.comment-actions-display');
 
                             if (displayDiv && editFormDiv) {
                                 displayDiv.style.display = 'none';
                                 if (actionsDiv) actionsDiv.style.display = 'none';
                                 editFormDiv.style.display = 'block';
+                                editFormDiv.querySelector('textarea').focus();
                             }
                         }
                     }
 
                     // Cancel Button Click
-                    if (event.target.classList.contains('cancel-edit-comment')) {
-                        const button = event.target;
-                        const commentId = button.getAttribute('data-comment-id');
+                    const cancelButton = event.target.closest('.cancel-edit-comment');
+                    if (cancelButton) {
+                        const commentId = cancelButton.getAttribute('data-comment-id');
                         const commentContainer = document.getElementById(`comment-${commentId}`);
 
                         if (commentContainer) {
-                            const displayDiv = commentContainer.querySelector('.comment-display');
+                            const displayDiv = commentContainer.querySelector('.comment-display-content');
                             const editFormDiv = commentContainer.querySelector('.comment-edit-form');
-                             const actionsDiv = commentContainer.querySelector('.comment-actions');
+                            const actionsDiv = commentContainer.querySelector('.comment-actions-display');
 
                             if (displayDiv && editFormDiv) {
                                 editFormDiv.style.display = 'none';
                                 displayDiv.style.display = 'block';
-                                if (actionsDiv) actionsDiv.style.display = '';
+                                if (actionsDiv) actionsDiv.style.display = ''; // Revert to default display
                             }
                         }
                     }
                 });
+            }
 
-        const reportModalElement = document.getElementById('reportCommentModal');
-        if (reportModalElement) {
-            reportModalElement.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const commentId = button.getAttribute('data-comment-id');
-                const articleId = button.getAttribute('data-article-id');
+            const reportModalElement = document.getElementById('reportCommentModal');
+            if (reportModalElement) {
+                reportModalElement.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget; // Button that triggered the modal
+                    const commentId = button.getAttribute('data-comment-id');
+                    const articleId = button.getAttribute('data-article-id'); // Already set in hidden field from Model.Id
 
-                const modalCommentIdInput = reportModalElement.querySelector('#reportModalCommentId');
-                const modalArticleIdInput = reportModalElement.querySelector('#reportModalArticleId');
-                 const modalDisplayCommentId = reportModalElement.querySelector('#reportModalDisplayCommentId');
-                const modalReasonTextarea = reportModalElement.querySelector('#reportModalReason');
-                const modalErrorDiv = reportModalElement.querySelector('#reportModalError');
+                    const modalCommentIdInput = reportModalElement.querySelector('#reportModalCommentId');
+                    const modalDisplayCommentId = reportModalElement.querySelector('#reportModalDisplayCommentId');
+                    const modalReasonTextarea = reportModalElement.querySelector('#reportModalReason');
+                    const modalErrorDiv = reportModalElement.querySelector('#reportModalError');
 
-                modalCommentIdInput.value = commentId;
-                modalArticleIdInput.value = articleId;
-                modalDisplayCommentId.textContent = commentId;
-                modalReasonTextarea.value = '';
-                modalErrorDiv.textContent = '';
+                    modalCommentIdInput.value = commentId;
+                    modalDisplayCommentId.textContent = commentId;
+                    modalReasonTextarea.value = ''; // Clear previous reason
+                    modalErrorDiv.textContent = ''; // Clear previous errors
                 });
             }
-        };
-    });
+        });
     </script>
 }

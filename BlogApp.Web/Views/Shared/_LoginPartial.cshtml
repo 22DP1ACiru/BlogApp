@@ -8,50 +8,49 @@
 <ul class="navbar-nav">
     @if (SignInManager.IsSignedIn(User))
     {
+        var currentUser = await UserManager.GetUserAsync(User);
+        var profilePicUrl = currentUser?.ProfilePictureUrl ?? "/images/default-profile.png";
+
         @* --- Links for LOGGED IN users --- *@
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="@profilePicUrl" alt="User" class="rounded-circle me-1" style="width: 28px; height: 28px; object-fit: cover;" />
+                Hello @UserManager.GetUserName(User)!
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUser">
+                <li><a class="dropdown-item" asp-controller="Manage" asp-action="Index" title="Manage your profile"><i class="bi bi-person-circle me-2"></i>Profile</a></li>
 
-        <li class="nav-item">
-            <a id="manage" class="nav-link text-dark" asp-controller="Manage" asp-action="Index" title="Manage your profile">Hello @UserManager.GetUserName(User)!</a>
-        </li>
+                @if (User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Administrator))
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" asp-controller="Articles" asp-action="MyArticles" title="View your articles"><i class="bi bi-file-earmark-text me-2"></i>My Articles</a></li>
+                    <li><a class="dropdown-item" asp-controller="Articles" asp-action="Create" title="Create a new article"><i class="bi bi-pencil-square me-2"></i>New Article</a></li>
+                }
 
-        @if (User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Administrator))
-        {
-            <li class="nav-item">
-                <a class="nav-link text-dark" asp-controller="Articles" asp-action="MyArticles" title="View your articles">My Articles</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link text-dark" asp-controller="Articles" asp-action="Create" title="Create a new article">New Article</a>
-            </li>
-        }
-
-        @if (User.IsInRole(AppRoles.Administrator))
-        {
-            <li class="nav-item">
-                <a class="nav-link text-info" asp-controller="Admin" asp-action="Index" title="Admin Area">Admin</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-warning" asp-controller="Admin" asp-action="ReportedComments" title="Moderate Reported Comments">Reports</a>
-            </li>
-        }
-
-        <li class="nav-item">
-            @* Logout needs to be a form POST *@
-            <form id="logoutForm" class="form-inline" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
-                @Html.AntiForgeryToken()
-                <button id="logout" type="submit" class="nav-link btn btn-link text-dark border-0">Logout</button>
-            </form>
+                @if (User.IsInRole(AppRoles.Administrator))
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index" title="Admin Area"><i class="bi bi-shield-lock me-2"></i>Admin Panel</a></li>
+                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="ReportedComments" title="Moderate Reported Comments"><i class="bi bi-exclamation-octagon me-2"></i>Comment Reports</a></li>
+                }
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form id="logoutForm" class="form-inline" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                        @Html.AntiForgeryToken()
+                        <button id="logout" type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Logout</button>
+                    </form>
+                </li>
+            </ul>
         </li>
     }
     else
     {
         @* --- Links for LOGGED OUT users --- *@
-
         <li class="nav-item">
-            <a class="nav-link text-dark" id="register" asp-controller="Account" asp-action="Register">Register</a>
+            <a class="nav-link text-dark" id="register" asp-controller="Account" asp-action="Register"><i class="bi bi-person-plus"></i> Register</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link text-dark" id="login" asp-controller="Account" asp-action="Login">Login</a>
+            <a class="nav-link text-dark" id="login" asp-controller="Account" asp-action="Login"><i class="bi bi-box-arrow-in-right"></i> Login</a>
         </li>
     }
 </ul>

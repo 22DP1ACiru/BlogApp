@@ -4,13 +4,12 @@ namespace BlogApp.Web.Models
 {
     public class ProfileViewModel
     {
-        [Required]
         [Display(Name = "Username")]
-        public string Username { get; set; }
+        public string? Username { get; set; } // Make nullable, remove [Required]
 
         [EmailAddress]
         [Display(Name = "Email")]
-        public string Email { get; set; }
+        public string? Email { get; set; } // Make nullable
 
         [Display(Name = "Profile Picture URL")]
         public string? ProfilePictureUrl { get; set; }

@@ -1,23 +1,23 @@
 ﻿@model BlogApp.Web.Models.CreateCommentViewModel
 
-<div class="card mt-4">
-    <div class="card-header">
-        Leave a Comment
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-chat-square-dots-fill me-2"></i>Leave a Comment
     </div>
     <div class="card-body">
         <form asp-controller="Comments" asp-action="Create" method="post">
             @Html.AntiForgeryToken()
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2 small"></div>
 
-            <input type="hidden" asp-for="ArticleId" value="@ViewData["ArticleId"]" />
+            <input type="hidden" asp-for="ArticleId" value="@Model.ArticleId" />
 
             <div class="mb-3">
-                <label asp-for="Content" class="form-label visually-hidden">Comment</label> @* Hide label visually if context is clear *@
-                <textarea asp-for="Content" class="form-control" rows="4" placeholder="Write your comment here..."></textarea>
-                <span asp-validation-for="Content" class="text-danger"></span>
+                <label asp-for="Content" class="form-label visually-hidden">Comment</label>
+                <textarea asp-for="Content" class="form-control" rows="4" placeholder="Share your thoughts..." required maxlength="1000"></textarea>
+                <span asp-validation-for="Content" class="text-danger small"></span>
             </div>
 
-            <button type="submit" class="btn btn-primary">Submit Comment</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-send-fill me-1"></i>Submit Comment</button>
         </form>
     </div>
 </div>

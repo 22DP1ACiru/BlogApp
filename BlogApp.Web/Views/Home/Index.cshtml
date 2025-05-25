@@ -3,15 +3,38 @@
     ViewData["Title"] = "Blog Home";
 }
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["WarningMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["WarningMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+
 @* Search Form *@
 <div class="row mb-4">
     <div class="col-md-8 offset-md-2">
         <form asp-controller="Home" asp-action="Index" method="get" class="d-flex">
-            <input type="search" name="searchString" class="form-control me-2" placeholder="Search articles..." aria-label="Search" value="@Model.SearchTerm">
-            <button class="btn btn-outline-primary" type="submit">Search</button>
+            <input type="search" name="searchString" class="form-control form-control-lg me-2" placeholder="Search articles..." aria-label="Search" value="@Model.SearchTerm">
+            <button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-search"></i></button>
             @if (!string.IsNullOrEmpty(Model.SearchTerm))
             {
-                <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary ms-2">Clear</a>
+                <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary btn-lg ms-2" title="Clear Search"><i class="bi bi-x-lg"></i></a>
             }
         </form>
     </div>
@@ -22,50 +45,63 @@
 @if (Model.SearchResults != null)
 {
     @* Display Search Results *@
-        <div class="row mb-4">
-            <div class="col-12">
-                 <h2>Search Results for "@Model.SearchTerm" (@Model.SearchResults.Count)</h2>
-                 <hr/>
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="display-6">Search Results for "@Model.SearchTerm" <span class="badge bg-secondary">@Model.SearchResults.Count</span></h2>
+            <hr class="my-3" />
             @if (!Model.SearchResults.Any())
             {
-                <p>No articles found matching your search term.</p>
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-emoji-frown fs-1 d-block mb-2"></i>
+                    No articles found matching your search term.
+                </div>
             }
             else
             {
-                @foreach (var item in Model.SearchResults)
-                {
-                    <partial name="_ArticleSummaryPartial" model="item" />
-                }
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    @foreach (var item in Model.SearchResults)
+                    {
+                        <div class="col">
+                            <partial name="_ArticleSummaryPartial" model="item" />
+                        </div>
+                    }
+                </div>
             }
-            </div>
         </div>
+    </div>
 }
 else
 {
     @* Display Default Sections *@
-        <div class="row">
-        @* Latest Articles *@
-            <div class="col-lg-8">
-                <h2 class="mb-3">Latest Articles</h2>
-                <hr />
+    <div class="row">
+        @* Latest Articles - Main Column *@
+        <div class="col-lg-8">
+            <h2 class="display-6 mb-3">Latest Articles</h2>
+            <hr class="my-3" />
             @if (!Model.LatestArticles.Any())
             {
-                <p>No articles published yet.</p>
+                <div class="alert alert-light text-center">
+                    <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
+                    No articles published yet. Check back soon!
+                </div>
             }
             else
             {
-                @foreach (var item in Model.LatestArticles)
-                {
-                    <partial name="_ArticleSummaryPartial" model="item" />
-                }
+                <div class="list-group">
+                    @foreach (var item in Model.LatestArticles)
+                    {
+                        <partial name="_ArticleSummaryPartial" model="item" />
+                    }
+                </div>
             }
-            </div>
+        </div>
 
-        @* Top Ranked / Last Commented *@
-            <div class="col-lg-4">
+        @* Sidebar - Top Ranked / Last Commented *@
+        <div class="col-lg-4">
             @* Top Ranked *@
-                <div class="p-3 mb-4 bg-light rounded shadow-sm">
-                    <h4 class="fst-italic">Top Ranked</h4>
+            <div class="p-3 mb-4 bg-light rounded shadow-sm sticky-top" style="top: 20px;"> @* Added sticky-top for sidebar effect on scroll *@
+                <h4 class="fst-italic"><i class="bi bi-graph-up-arrow me-2"></i>Top Ranked</h4>
+                <hr />
                 @if (!Model.TopRankedArticles.Any())
                 {
                     <p class="mb-0 small text-muted">No articles have been ranked yet.</p>
@@ -75,34 +111,37 @@ else
                     <ol class="list-unstyled mb-0">
                         @foreach (var item in Model.TopRankedArticles.OrderBy(a => Model.TopRankedArticles.IndexOf(a)))
                         {
-                            <li class="d-flex justify-content-between align-items-center mb-1">
-                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-truncate me-2">@item.Title</a>
+                            <li class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-truncate me-2 text-decoration-none">@item.Title</a>
                                 <span class="badge @(item.Score > 0 ? "bg-success" : (item.Score < 0 ? "bg-danger" : "bg-secondary")) rounded-pill">
-                                    @item.Score
+                                    <i class="bi @(item.Score > 0 ? "bi-arrow-up" : (item.Score < 0 ? "bi-arrow-down" : "bi-dash-lg"))"></i> @item.Score
                                 </span>
                             </li>
                         }
                     </ol>
                 }
-                </div>
+            </div>
 
             @* Last Commented *@
-                 <div class="p-3 mb-3 bg-light rounded shadow-sm">
-                    <h4 class="fst-italic">Recently Commented</h4>
+            <div class="p-3 mt-4 bg-light rounded shadow-sm sticky-top" style="top: calc(20px + @(Model.TopRankedArticles.Count > 0 ? (Model.TopRankedArticles.Count * 40 + 100) : 100)px);"> @* Adjust top based on previous block height roughly *@
+                <h4 class="fst-italic"><i class="bi bi-chat-left-text me-2"></i>Recently Commented</h4>
+                <hr />
                 @if (!Model.LastCommentedArticles.Any())
                 {
-                    <p class="mb-0 small text-muted">No articles have been commented on yet.</p>
+                    <p class="mb-0 small text-muted">No articles have been commented on recently.</p>
                 }
                 else
                 {
-                    <ol class="list-unstyled mb-0">
+                    <ul class="list-unstyled mb-0">
                         @foreach (var item in Model.LastCommentedArticles.OrderBy(a => Model.LastCommentedArticles.IndexOf(a)))
                         {
-                            <li><a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></li>
+                            <li class="mb-1 border-bottom pb-1">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none">@item.Title</a>
+                            </li>
                         }
-                    </ol>
+                    </ul>
                 }
-                </div>
             </div>
         </div>
+    </div>
 }

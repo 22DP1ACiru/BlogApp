@@ -47,7 +47,11 @@ public class ManageController : Controller
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl
         };
-        ViewBag.StatusMessage = TempData["StatusMessage"];
+        // Preserve TempData if it was set by a POST action that redirected here
+        if (TempData["StatusMessage"] != null)
+        {
+            ViewBag.StatusMessage = TempData["StatusMessage"];
+        }
         return View(model);
     }
 
@@ -56,22 +60,26 @@ public class ManageController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(ProfileViewModel model)
     {
+        var user = await GetCurrentUserAsync(); // Get user details early
+
+        // If ModelState is invalid (e.g., due to ProfilePicture validation errors for type/size)
+        // we need to repopulate the display fields before returning the view.
         if (!ModelState.IsValid)
         {
-            var currentUser = await GetCurrentUserAsync();
-            model.Email = currentUser.Email;
-            model.ProfilePictureUrl = currentUser.ProfilePictureUrl;
+            _logger.LogWarning("ModelState is invalid for user {UserId} during profile update.", user.Id);
+            // Repopulate fields that are not posted back because they are disabled in the view
+            model.Username = user.UserName;
+            model.Email = user.Email;
+            model.ProfilePictureUrl = user.ProfilePictureUrl; // Show existing picture if new one failed validation
             return View(model);
         }
 
-        var user = await GetCurrentUserAsync();
+        // ModelState is valid, proceed with logic for updating profile picture
         bool profileUpdated = false;
-        string oldProfilePictureUrl = user.ProfilePictureUrl; // Store old URL for deletion later
+        string oldProfilePictureUrl = user.ProfilePictureUrl;
 
-        // --- Handle Profile Picture Upload ---
         if (model.ProfilePicture != null && model.ProfilePicture.Length > 0)
         {
-            // Validate File
             long maxFileSize = 1024 * 1024; // 1 MB
             var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/gif" };
 
@@ -85,36 +93,25 @@ public class ManageController : Controller
             }
             else
             {
-                // Generate unique filename and path
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "profiles");
-                // Ensure the directory exists
                 Directory.CreateDirectory(uploadsFolder);
-
                 string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ProfilePicture.FileName);
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                // Save the new file
                 try
                 {
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
                         await model.ProfilePicture.CopyToAsync(fileStream);
                     }
-
-                    // Update user's ProfilePictureUrl
-                    // Store the web-accessible path (relative to wwwroot)
                     user.ProfilePictureUrl = $"/images/profiles/{uniqueFileName}";
                     profileUpdated = true;
                     _logger.LogInformation("User {UserId} uploaded new profile picture: {FilePath}", user.Id, filePath);
 
-                    // Delete the old profile picture file
                     if (!string.IsNullOrEmpty(oldProfilePictureUrl) && oldProfilePictureUrl != user.ProfilePictureUrl)
                     {
-                        // Convert web path back to physical path for deletion
-                        // Remove leading '/' if present
-                        string oldFileName = Path.GetFileName(oldProfilePictureUrl); // Extract filename from URL
+                        string oldFileName = Path.GetFileName(oldProfilePictureUrl);
                         string oldFilePath = Path.Combine(uploadsFolder, oldFileName);
-
                         if (System.IO.File.Exists(oldFilePath))
                         {
                             try
@@ -124,7 +121,6 @@ public class ManageController : Controller
                             }
                             catch (IOException ex)
                             {
-                                // Log error but don't necessarily fail the whole operation
                                 _logger.LogError(ex, "Error deleting old profile picture file {OldFilePath} for user {UserId}", oldFilePath, user.Id);
                             }
                         }
@@ -134,56 +130,53 @@ public class ManageController : Controller
                 {
                     _logger.LogError(ex, "Error saving profile picture file for user {UserId}", user.Id);
                     ModelState.AddModelError(string.Empty, "An error occurred while saving the profile picture.");
-                    // Ensure the profile picture URL isn't updated if saving failed
                     user.ProfilePictureUrl = oldProfilePictureUrl;
                     profileUpdated = false;
                 }
             }
         }
 
-        // If there were errors during file processing, return the view
+        // If there were errors during file processing AFTER the initial ModelState.IsValid check (e.g. inside the 'else' block above)
         if (!ModelState.IsValid)
         {
-            // Re-populate non-posted fields if returning view due to file error
+            // Repopulate for view display
             model.Username = user.UserName;
             model.Email = user.Email;
-            model.ProfilePictureUrl = oldProfilePictureUrl; // Show the original picture if upload failed
+            model.ProfilePictureUrl = oldProfilePictureUrl; // Show original if upload failed
             return View(model);
         }
 
-
-        // Save changes to the user profile (only if picture was updated)
         if (profileUpdated)
         {
             var result = await _accountService.UpdateUserProfileAsync(user);
             if (!result.Succeeded)
             {
-                // Revert URL if save fails? Or assume temporary failure? For now, add error.
-                user.ProfilePictureUrl = oldProfilePictureUrl; // Maybe revert on DB save failure
+                user.ProfilePictureUrl = oldProfilePictureUrl; // Revert on DB save failure
                 ModelState.AddModelError(string.Empty, "An error occurred updating your profile database record.");
                 foreach (var error in result.Errors) { ModelState.AddModelError(string.Empty, error.Description); }
 
-                // Re-populate non-posted fields before returning view on error
+                // Repopulate for view display
                 model.Username = user.UserName;
                 model.Email = user.Email;
                 model.ProfilePictureUrl = oldProfilePictureUrl;
                 return View(model);
             }
             await _signInManager.RefreshSignInAsync(user);
-            TempData["StatusMessage"] = "Your profile has been updated.";
+            TempData["StatusMessage"] = "Your profile picture has been updated.";
         }
         else if (model.ProfilePicture != null && model.ProfilePicture.Length > 0)
         {
-            // If a file was uploaded but didn't pass validation or save correctly,
-            // status message might already be set by ModelState errors.
-            // Add a generic one if nothing else was set.
-            if (ModelState.ErrorCount == 0) // Check if specific errors were already added
-                TempData["StatusMessage"] = "Profile update failed. Please check the requirements.";
+            // This case means a file was provided, but it failed validation within the 'if (model.ProfilePicture != null)' block
+            // ModelState errors would have been added there.
+            // The 'if (!ModelState.IsValid)' block further up should catch this and return the view.
+            // Adding a generic message if for some reason it wasn't set.
+            if (ModelState.ErrorCount == 0)
+                TempData["StatusMessage"] = "Profile update failed due to an issue with the uploaded file. Please check the requirements.";
         }
         else
         {
-            // If no file was uploaded and no other changes were made
-            TempData["StatusMessage"] = "No changes were detected.";
+            // No new picture uploaded, and no errors.
+            TempData["StatusMessage"] = "No changes to profile picture were made.";
         }
 
         return RedirectToAction(nameof(Index));
@@ -199,12 +192,10 @@ public class ManageController : Controller
 
         if (string.IsNullOrEmpty(currentPictureUrl))
         {
-            // Nothing to remove
             TempData["StatusMessage"] = "No profile picture to remove.";
             return RedirectToAction(nameof(Index));
         }
 
-        // Clear the URL in the user record
         user.ProfilePictureUrl = null;
         var result = await _accountService.UpdateUserProfileAsync(user);
 
@@ -220,14 +211,12 @@ public class ManageController : Controller
             string? fileName = null;
             try
             {
-                // Extract filename from potentially null/empty string
                 fileName = Path.GetFileName(currentPictureUrl);
             }
             catch (ArgumentException ex)
             {
                 _logger.LogWarning(ex, "Could not extract filename from URL '{Url}' for user {UserId}", currentPictureUrl, user.Id);
             }
-
 
             if (!string.IsNullOrEmpty(fileName))
             {
@@ -256,11 +245,8 @@ public class ManageController : Controller
             {
                 TempData["StatusMessage"] = "Profile picture information removed.";
             }
-
-            // Refresh claims if needed (might not be strictly necessary for just URL change)
             await _signInManager.RefreshSignInAsync(user);
         }
-
         return RedirectToAction(nameof(Index));
     }
 
@@ -268,7 +254,11 @@ public class ManageController : Controller
     [HttpGet]
     public IActionResult ChangePassword()
     {
-        ViewBag.StatusMessage = TempData["StatusMessage"];
+        // Preserve TempData if it was set by a POST action that redirected here
+        if (TempData["StatusMessage"] != null)
+        {
+            ViewBag.StatusMessage = TempData["StatusMessage"];
+        }
         return View();
     }
 
