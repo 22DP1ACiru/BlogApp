@@ -1,6 +1,7 @@
 ﻿@model BlogApp.Web.Models.CommentViewModel
 @using System.Security.Claims
 @using BlogApp.Core.Constants
+@using Microsoft.AspNetCore.Http.Extensions
 
 @{
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -8,9 +9,14 @@
     var articleIdForView = ViewData["ArticleId"];
     var defaultProfilePic = "/images/default-profile.png";
     var authorProfilePic = string.IsNullOrEmpty(Model.AuthorProfilePictureUrl) ? defaultProfilePic : Model.AuthorProfilePictureUrl;
+    bool isAdmin = User.IsInRole(AppRoles.Administrator);
 }
 
-<div class="d-flex mb-3 comment-container @(Model.IsBlocked ? "blocked-comment" : "")" id="comment-@Model.Id">
+<div class="d-flex mb-3 comment-container 
+     @(Model.IsBlocked && isAdmin ? "admin-view-blocked-comment initially-hidden" : "")
+     @(Model.IsBlocked && !isAdmin ? "d-none" : "")" 
+     id="comment-@Model.Id">
+
     <div class="flex-shrink-0 me-3">
         <img src="@authorProfilePic" alt="@Model.AuthorUsername" class="rounded-circle comment-author-img">
     </div>
@@ -28,7 +34,7 @@
                     </small>
                 </div>
                 <div class="comment-actions-display ms-2">
-                    @if (Model.CanEdit)
+                    @if (Model.CanEdit && !Model.IsBlocked)
                     {
                         <button type="button" class="btn btn-sm btn-outline-secondary me-1 edit-comment-button" data-comment-id="@Model.Id" title="Edit Comment"><i class="bi bi-pencil"></i></button>
                     }
@@ -54,28 +60,24 @@
                 </div>
             </div>
             <p class="mt-2 mb-0 card-text" style="white-space: pre-wrap; word-break: break-word;">@Html.DisplayFor(m => m.Content)</p>
-             @if (Model.IsBlocked && User.IsInRole(AppRoles.Administrator))
+            
+            @if (Model.IsBlocked && isAdmin)
             {
-                <div class="mt-2 p-2 bg-danger-subtle border border-danger rounded small">
+                <div class="mt-2 p-2 border rounded small blocked-comment-admin-indicator">
                     <i class="bi bi-slash-circle-fill text-danger me-1"></i>
                     This comment is currently <strong>BLOCKED</strong>.
                     <form asp-controller="Admin" asp-action="UnblockComment" method="post" class="d-inline ms-2">
                          @Html.AntiForgeryToken()
                         <input type="hidden" name="commentId" value="@Model.Id" />
+                        <input type="hidden" name="articleId" value="@articleIdForView" />
+                        <input type="hidden" name="returnUrl" value="@Context.Request.GetEncodedPathAndQuery()" /> 
                         <button type="submit" class="btn btn-sm btn-outline-success py-0">Unblock</button>
                     </form>
                 </div>
             }
-            else if (Model.IsBlocked)  @* For non-admins, viewing a blocked comment in a context where it's shown (e.g., if logic changes) *@
-            {
-                 <div class="mt-2 p-2 bg-light border rounded small fst-italic text-muted">
-                    <i class="bi bi-slash-circle me-1"></i>
-                    Comment blocked by administrator.
-                </div>
-            }
         </div>
 
-        @if (Model.CanEdit)
+        @if (Model.CanEdit && !Model.IsBlocked)
         {
             <div class="comment-edit-form mt-2" style="display: none;">
                 <form asp-controller="Comments" asp-action="Edit" method="post">

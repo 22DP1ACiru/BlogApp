@@ -31,10 +31,12 @@ namespace BlogApp.DAL.Repositories
                                 .FirstOrDefaultAsync(cr => cr.Id == reportId);
         }
 
-        public async Task<bool> HasUserReportedCommentAsync(int commentId, string userId)
+        public async Task<bool> HasUserPendingReportForCommentAsync(int commentId, string userId)
         {
             return await _context.CommentReports
-                                .AnyAsync(cr => cr.CommentId == commentId && cr.ReporterUserId == userId);
+                                .AnyAsync(cr => cr.CommentId == commentId &&
+                                                cr.ReporterUserId == userId &&
+                                                cr.Status == ReportStatus.Pending);
         }
     }
 }

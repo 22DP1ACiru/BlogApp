@@ -1,5 +1,5 @@
-﻿    using BlogApp.BLL.Interfaces;
-    using BlogApp.BLL.Helpers;
+﻿using BlogApp.BLL.Interfaces;
+using BlogApp.BLL.Helpers;
 using BlogApp.Core.Constants;
 using BlogApp.Core.Entities;
 using BlogApp.DAL.Interfaces;
@@ -35,15 +35,30 @@ namespace BlogApp.BLL.Services
         {
             try
             {
-                var comments = await _unitOfWork.Comments.GetCommentsByArticleIdAsync(articleId);
-                return comments.Where(c => !c.IsBlocked);
+                var comments = await _unitOfWork.Comments.GetCommentsByArticleIdAsync(articleId); // This repo method includes User
+                return comments.Where(c => !c.IsBlocked); // Filter out blocked comments for general view
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting comments for Article {ArticleId}", articleId);
+                _logger.LogError(ex, "Error getting non-blocked comments for Article {ArticleId}", articleId);
                 return Enumerable.Empty<Comment>();
             }
         }
+
+        public async Task<IEnumerable<Comment>> GetAllCommentsForArticleIncludingBlockedAsync(int articleId)
+        {
+            try
+            {
+                // Assuming GetCommentsByArticleIdAsync from the repository fetches comments with user details
+                return await _unitOfWork.Comments.GetCommentsByArticleIdAsync(articleId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all comments (including blocked) for Article {ArticleId}", articleId);
+                return Enumerable.Empty<Comment>();
+            }
+        }
+
 
         public async Task<Comment?> GetCommentByIdAsync(int commentId)
         {

@@ -98,14 +98,26 @@ body {
   background-color: #fdfdfd;
   padding: 1rem;
   border-radius: 0.25rem;
-  margin-bottom: 1rem !important; /* Override Bootstrap's mb-3 if needed */
+  margin-bottom: 1rem !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
 }
 
-.comment-container.blocked-comment {
-  background-color: #fff3cd; /* Light yellow for blocked comments */
-  border-left: 5px solid #ffeeba;
-  opacity: 0.8;
+/* This class is added by _CommentDisplayPartial if comment is blocked AND user is admin */
+.admin-view-blocked-comment {
+  background-color: #ffebee !important; /* Light red */
+  border-left: 4px solid #ffcdd2 !important; /* Slightly darker red border */
+}
+
+/* This class is added by _CommentDisplayPartial to initially hide admin-viewable blocked comments */
+.initially-hidden {
+  display: none !important;
+}
+
+.blocked-comment-admin-indicator {
+  background-color: #ffdde0; /* A very light red, distinct from the main bg for indicator box */
+  border-color: #ffcdd2 !important;
+  color: #721c24;
 }
 
 .comment-author-img {

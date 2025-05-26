@@ -8,6 +8,6 @@ namespace BlogApp.DAL.Interfaces
     {
         Task<IEnumerable<CommentReport>> GetPendingReportsWithDetailsAsync();
         Task<CommentReport?> GetReportByIdWithDetailsAsync(int reportId);
-        Task<bool> HasUserReportedCommentAsync(int commentId, string userId);
+        Task<bool> HasUserPendingReportForCommentAsync(int commentId, string userId);
     }
 }

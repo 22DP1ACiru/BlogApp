@@ -199,7 +199,7 @@ namespace BlogApp.Web.Controllers
         // POST: /Admin/BlockComment
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> BlockComment(int commentId, int? reportId = null)
+        public async Task<IActionResult> BlockComment(int commentId, int? reportId = null, string? returnUrl = null, int? articleId = null)
         {
             var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (adminUserId == null) return Challenge();
@@ -209,14 +209,25 @@ namespace BlogApp.Web.Controllers
             if (success) TempData["SuccessMessage"] = "Comment blocked successfully.";
             else TempData["ErrorMessage"] = "Failed to block comment (it might already be blocked or deleted).";
 
-            if (reportId.HasValue) return RedirectToAction(nameof(ReportedComments));
-            else return RedirectToAction(nameof(Index));
+            if (Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            if (articleId.HasValue)
+            {
+                return RedirectToAction("Details", "Articles", new { id = articleId.Value, fragment = $"comment-{commentId}" });
+            }
+            if (reportId.HasValue)
+            {
+                return RedirectToAction(nameof(ReportedComments));
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // POST: /Admin/UnblockComment
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UnblockComment(int commentId)
+        public async Task<IActionResult> UnblockComment(int commentId, int? articleId = null, string? returnUrl = null)
         {
             var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (adminUserId == null) return Challenge();
@@ -225,6 +236,16 @@ namespace BlogApp.Web.Controllers
 
             if (success) TempData["SuccessMessage"] = "Comment unblocked successfully.";
             else TempData["ErrorMessage"] = "Failed to unblock comment (it might not be blocked or doesn't exist).";
+
+            if (Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            if (articleId.HasValue)
+            {
+                // Add fragment to jump to the comment
+                return RedirectToAction("Details", "Articles", new { id = articleId.Value, fragment = $"comment-{commentId}" });
+            }
 
             return RedirectToAction(nameof(ReportedComments));
         }

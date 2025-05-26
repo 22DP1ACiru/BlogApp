@@ -1,4 +1,5 @@
 ﻿@model BlogApp.Web.Models.ArticleViewModel
+@using BlogApp.Core.Constants
 
 @{
     ViewData["Title"] = Model.Title;
@@ -6,6 +7,8 @@
     int? userVote = Model.CurrentUserVote;
     var defaultProfilePic = "/images/default-profile.png";
     var authorProfilePic = string.IsNullOrEmpty(Model.AuthorProfilePictureUrl) ? defaultProfilePic : Model.AuthorProfilePictureUrl;
+    bool isAdmin = User.IsInRole(AppRoles.Administrator);
+    int blockedCommentCount = ViewBag.BlockedCommentCount ?? 0;
 }
 
 @if (TempData["SuccessMessage"] != null)
@@ -98,11 +101,21 @@
 </div>
 
 <section id="comments" class="mt-5 pt-4 border-top">
-    <h3 class="mb-4"><i class="bi bi-chat-dots-fill me-2"></i>Comments (@Model.Comments.Count(c => !c.IsBlocked || User.IsInRole(BlogApp.Core.Constants.AppRoles.Administrator)))</h3>
+    <h3 class="mb-3"><i class="bi bi-chat-dots-fill me-2"></i>Comments (@Model.Comments.Count(c => !c.IsBlocked || isAdmin))</h3>
+
+    @if (isAdmin && blockedCommentCount > 0)
+    {
+        <div class="mb-3">
+            <button id="showBlockedCommentsBtn" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-eye-slash-fill me-1"></i> There are @blockedCommentCount blocked comments on this article. Do you want to see them?
+            </button>
+        </div>
+    }
+
 
     @if (Model.Comments.Any())
     {
-        @foreach (var comment in Model.Comments)
+        foreach (var comment in Model.Comments)
         {
             <partial name="_CommentDisplayPartial" model="comment" view-data='new ViewDataDictionary(ViewData) { { "ArticleId", Model.Id } }' />
         }
@@ -150,7 +163,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>You are about to report comment ID: <strong id="reportModalDisplayCommentId" class="text-danger"></strong>.</p>
+                    <p>You are about to report <span id="reportModalCommentTargetDescription" class="fw-bold">this comment</span>.</p>
                     <div class="mb-3">
                         <label for="reportModalReason" class="form-label">Reason for Reporting (Optional):</label>
                         <textarea class="form-control" id="reportModalReason" name="Reason" rows="3" maxlength="500" placeholder="e.g., spam, offensive content..."></textarea>
@@ -219,19 +232,45 @@
             const reportModalElement = document.getElementById('reportCommentModal');
             if (reportModalElement) {
                 reportModalElement.addEventListener('show.bs.modal', function (event) {
-                    const button = event.relatedTarget; // Button that triggered the modal
+                    const button = event.relatedTarget; 
                     const commentId = button.getAttribute('data-comment-id');
-                    const articleId = button.getAttribute('data-article-id'); // Already set in hidden field from Model.Id
-
+                    
                     const modalCommentIdInput = reportModalElement.querySelector('#reportModalCommentId');
-                    const modalDisplayCommentId = reportModalElement.querySelector('#reportModalDisplayCommentId');
+                    const modalCommentTargetDescriptionSpan = reportModalElement.querySelector('#reportModalCommentTargetDescription');
                     const modalReasonTextarea = reportModalElement.querySelector('#reportModalReason');
                     const modalErrorDiv = reportModalElement.querySelector('#reportModalError');
 
                     modalCommentIdInput.value = commentId;
-                    modalDisplayCommentId.textContent = commentId;
-                    modalReasonTextarea.value = ''; // Clear previous reason
-                    modalErrorDiv.textContent = ''; // Clear previous errors
+                    modalReasonTextarea.value = ''; 
+                    modalErrorDiv.textContent = ''; 
+
+                    // Get comment content for display
+                    let commentDescriptionText = "this comment"; // Default
+                    const commentContainer = document.getElementById(`comment-${commentId}`);
+                    if (commentContainer) {
+                        const commentTextElement = commentContainer.querySelector('.comment-display-content .card-text'); // Path to comment text
+                        if (commentTextElement) {
+                            let fullText = commentTextElement.textContent.trim();
+                            const maxLength = 80; // Max length for the snippet
+                            if (fullText.length > maxLength) {
+                                commentDescriptionText = `the comment beginning with: <i class="text-muted">"${fullText.substring(0, maxLength)}..."</i>`;
+                            } else {
+                                commentDescriptionText = `the comment: <i class="text-muted">"${fullText}"</i>`;
+                            }
+                        }
+                    }
+                    modalCommentTargetDescriptionSpan.innerHTML = commentDescriptionText;
+                });
+            }
+
+            const showBlockedBtn = document.getElementById('showBlockedCommentsBtn');
+            if (showBlockedBtn) {
+                showBlockedBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.admin-view-blocked-comment.initially-hidden').forEach(function(commentElement) {
+                        commentElement.classList.remove('initially-hidden');
+                        commentElement.style.display = 'flex'; // Assuming .comment-container uses d-flex
+                    });
+                    this.style.display = 'none'; // Hide the button itself
                 });
             }
         });
