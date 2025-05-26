@@ -10,6 +10,7 @@
     var defaultProfilePic = "/images/default-profile.png";
     var authorProfilePic = string.IsNullOrEmpty(Model.AuthorProfilePictureUrl) ? defaultProfilePic : Model.AuthorProfilePictureUrl;
     bool isAdmin = User.IsInRole(AppRoles.Administrator);
+    int commentMaxLength = 1000; // From Comment.cs StringLength attribute
     
     // Determine CSS classes for the main comment container
     var commentContainerClasses = "d-flex mb-3 comment-container";
@@ -103,7 +104,8 @@
                     <input type="hidden" name="ArticleId" value="@articleIdForView" />
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-1"></div>
                     <div class="mb-2">
-                        <textarea name="Content" class="form-control form-control-sm" rows="3" required maxlength="1000">@Model.Content</textarea>
+                        <textarea name="Content" class="form-control form-control-sm character-counted" rows="3" required data-max-length="@commentMaxLength">@Model.Content</textarea>
+                        <div class="char-counter-display text-end text-muted small mt-1"></div>
                         <span asp-validation-for="Content" class="text-danger small"></span>
                     </div>
                     <div>

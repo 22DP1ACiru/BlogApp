@@ -34,6 +34,13 @@ body {
   background-color: #f8f9fa; /* Light background for the footer */
 }
 
+/* Article Detail Title Styling */
+.article-title-detailed {
+  overflow-wrap: break-word; /* Standard property */
+  word-wrap: break-word; /* Older browsers an/or IE */
+  /* hyphens: auto; */ /* Optional: for better breaking of long words if lang attribute is set on <html> */
+}
+
 /* Article Content Styling */
 .article-content {
   overflow-wrap: break-word; /* Handles long words/URLs */
@@ -142,4 +149,10 @@ body {
 .default-profile-pic-small {
   font-size: 1.2em; /* Adjust as needed */
   color: #6c757d; /* Bootstrap text-muted color */
+}
+
+/* Character Counter Display */
+.char-counter-display {
+  font-size: 0.875em;
+  /* No specific styling needed other than text-end, text-muted, text-danger which are applied by JS */
 }

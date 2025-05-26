@@ -1,4 +1,7 @@
 ﻿@model BlogApp.Web.Models.CreateCommentViewModel
+@{
+    int commentMaxLength = 1000; // From Comment.cs StringLength attribute
+}
 
 <div class="card shadow-sm">
     <div class="card-header bg-primary text-white">
@@ -13,7 +16,9 @@
 
             <div class="mb-3">
                 <label asp-for="Content" class="form-label visually-hidden">Comment</label>
-                <textarea asp-for="Content" class="form-control" rows="4" placeholder="Share your thoughts..." required maxlength="1000"></textarea>
+                <textarea asp-for="Content" class="form-control character-counted" rows="4"
+                    placeholder="Share your thoughts..." required data-max-length="@commentMaxLength"></textarea>
+                <div class="char-counter-display text-end text-muted small mt-1"></div>
                 <span asp-validation-for="Content" class="text-danger small"></span>
             </div>
 
