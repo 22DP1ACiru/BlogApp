@@ -19,22 +19,33 @@ namespace BlogApp.BLL.Services
 
         public async Task<bool> ReportCommentAsync(int commentId, string reporterUserId, string? reason)
         {
+            if (commentId <= 0)
+            {
+                _logger.LogWarning("ReportCommentAsync: Invalid CommentId {CommentId} provided by User {ReporterUserId}.", commentId, reporterUserId);
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(reporterUserId))
+            {
+                _logger.LogWarning("ReportCommentAsync: Null or empty ReporterUserId provided for CommentId {CommentId}.", commentId);
+                return false;
+            }
+
             var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
             if (comment == null)
             {
-                _logger.LogWarning("Failed to report: Comment {CommentId} not found.", commentId);
+                _logger.LogWarning("Failed to report: Comment {CommentId} not found. Reported by User {ReporterUserId}.", commentId, reporterUserId);
                 return false;
             }
 
             if (comment.UserId == reporterUserId)
             {
-                _logger.LogWarning("User {ReporterUserId} attempted to report their own comment {CommentId}.", reporterUserId, commentId);
+                _logger.LogInformation("User {ReporterUserId} attempted to report their own comment (ID: {CommentId}). Action disallowed.", reporterUserId, commentId);
                 return false;
             }
 
             if (await _unitOfWork.CommentReports.HasUserPendingReportForCommentAsync(commentId, reporterUserId))
             {
-                _logger.LogInformation("User {UserId} tried to report Comment {CommentId} again, but already has a PENDING report.", reporterUserId, commentId);
+                _logger.LogInformation("User {ReporterUserId} already has a PENDING report for Comment {CommentId}. New report not created.", reporterUserId, commentId);
                 return false;
             }
 
@@ -44,18 +55,19 @@ namespace BlogApp.BLL.Services
                 {
                     CommentId = commentId,
                     ReporterUserId = reporterUserId,
-                    Reason = reason,
+                    Reason = reason?.Trim(),
                     ReportDate = DateTime.UtcNow,
                     Status = ReportStatus.Pending
                 };
+
                 await _unitOfWork.CommentReports.AddAsync(report);
                 await _unitOfWork.CompleteAsync();
-                _logger.LogInformation("Comment {CommentId} reported by User {UserId}", commentId, reporterUserId);
+                _logger.LogInformation("Comment {CommentId} successfully reported by User {ReporterUserId}. Report ID: {ReportId}.", commentId, reporterUserId, report.Id);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reporting Comment {CommentId}", commentId);
+                _logger.LogError(ex, "Error reporting Comment {CommentId} by User {ReporterUserId}. Reason: {ReportReason}", commentId, reporterUserId, reason);
                 return false;
             }
         }
@@ -65,13 +77,14 @@ namespace BlogApp.BLL.Services
             try
             {
                 var pendingReports = await _unitOfWork.CommentReports.GetPendingReportsWithDetailsAsync();
-                if (pendingReports == null || !pendingReports.Any())
+
+                if (!pendingReports.Any())
                 {
                     return Enumerable.Empty<GroupedCommentReportDto>();
                 }
 
                 var groupedReportDtos = pendingReports
-                    .GroupBy(r => r.CommentId)
+                    .GroupBy(r => r.CommentId) // Group by the comment that was reported
                     .Select(group =>
                     {
                         var firstReportInGroup = group.First();
@@ -79,109 +92,147 @@ namespace BlogApp.BLL.Services
 
                         if (comment == null)
                         {
-                            _logger.LogWarning("CommentReport {ReportId} associated with non-existent CommentId {CommentId}. Skipping.", firstReportInGroup.Id, firstReportInGroup.CommentId);
+                            _logger.LogWarning("CommentReport (e.g., ID {ReportId}) is associated with a deleted or non-existent CommentId {CommentId}. Skipping this group.", firstReportInGroup.Id, firstReportInGroup.CommentId);
                             return null;
                         }
 
                         return new GroupedCommentReportDto
                         {
                             CommentId = comment.Id,
-                            CommentContentPreview = comment.Content?.Length > 100 ? comment.Content.Substring(0, 100) + "..." : comment.Content ?? "[Content Missing]",
+                            CommentContentPreview = comment.Content?.Length > 100 ? comment.Content.Substring(0, 100) + "..." : (comment.Content ?? "[Content Missing]"),
                             FullCommentContent = comment.Content ?? "[Content Missing]",
                             ArticleId = comment.ArticleId,
-                            ArticleTitle = comment.Article?.Title ?? "[Article Deleted/Missing]",
+                            ArticleTitle = comment.Article?.Title ?? "[Article Deleted/Missing]", // Handle if article also deleted
                             IsCommentBlocked = comment.IsBlocked,
-                            PendingReportCount = group.Count(r => r.Status == ReportStatus.Pending), // Ensure we only count pending
-                            IndividualReportDetails = group.Where(r => r.Status == ReportStatus.Pending) // And only include pending details
-                                                           .Select(r => new ReportDetailDto
-                                                           {
-                                                               ReportId = r.Id,
-                                                               ReporterUsername = r.ReporterUser?.UserName ?? "Unknown User",
-                                                               ReportDate = r.ReportDate,
-                                                               Reason = r.Reason,
-                                                               Status = r.Status
-                                                           }).OrderByDescending(ir => ir.ReportDate).ToList()
+                            PendingReportCount = group.Count(r => r.Status == ReportStatus.Pending), // Count only PENDING reports
+                            IndividualReportDetails = group
+                                .Where(r => r.Status == ReportStatus.Pending) // Include details of PENDING reports only
+                                .Select(r => new ReportDetailDto
+                                {
+                                    ReportId = r.Id,
+                                    ReporterUsername = r.ReporterUser?.UserName ?? "[Reporter User Deleted/Missing]",
+                                    ReportDate = r.ReportDate,
+                                    Reason = r.Reason,
+                                    Status = r.Status
+                                })
+                                .OrderByDescending(ir => ir.ReportDate) // Show newest reports first within the group
+                                .ToList()
                         };
                     })
-                    .Where(dto => dto != null && dto.PendingReportCount > 0) // Ensure there are pending reports in the group
-                    .OrderByDescending(dto => dto!.IndividualReportDetails.Any() ? dto.IndividualReportDetails.Max(ir => ir.ReportDate) : DateTime.MinValue)
+                    .Where(dto => dto != null && dto.PendingReportCount > 0) // Filter out groups for deleted comments or no pending reports
+                    .OrderByDescending(dto => dto!.IndividualReportDetails.Any() ? dto.IndividualReportDetails.Max(ir => ir.ReportDate) : DateTime.MinValue) // Order groups by newest report
                     .ToList();
 
-                return groupedReportDtos;
+                return groupedReportDtos!;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting and grouping pending reports for DTOs.");
+                _logger.LogError(ex, "Error retrieving and grouping pending comment reports.");
                 return Enumerable.Empty<GroupedCommentReportDto>();
             }
         }
 
+
         public async Task<bool> BlockCommentAsync(int commentId, string adminUserId)
         {
+            if (commentId <= 0 || string.IsNullOrWhiteSpace(adminUserId))
+            {
+                _logger.LogWarning("BlockCommentAsync: Invalid parameters. CommentId: {CommentId}, AdminUserId: '{AdminUserId}'.", commentId, adminUserId);
+                return false;
+            }
+
             try
             {
                 var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-                if (comment == null || comment.IsBlocked)
+                if (comment == null)
                 {
-                    _logger.LogWarning("BlockComment: Comment {CommentId} not found or already blocked.", commentId);
+                    _logger.LogWarning("BlockComment: Comment {CommentId} not found. Action by Admin {AdminUserId}.", commentId, adminUserId);
+                    return false;
+                }
+                if (comment.IsBlocked)
+                {
+                    _logger.LogInformation("BlockComment: Comment {CommentId} is already blocked. Action by Admin {AdminUserId}.", commentId, adminUserId);
                     return false;
                 }
 
                 comment.IsBlocked = true;
-                comment.LastUpdatedDate = DateTime.UtcNow;
+                comment.LastUpdatedDate = DateTime.UtcNow; // Record when it was blocked
 
-                var reports = await _unitOfWork.CommentReports.FindAsync(r => r.CommentId == commentId && r.Status == ReportStatus.Pending);
-                foreach (var report in reports)
+                var reportsToUpdate = await _unitOfWork.CommentReports.FindAsync(r => r.CommentId == commentId && r.Status == ReportStatus.Pending);
+                int updatedReportsCount = 0;
+                foreach (var report in reportsToUpdate)
                 {
-                    report.Status = ReportStatus.Blocked; // Or "ActionedByBlock"
+                    report.Status = ReportStatus.Blocked;
                     report.ReviewedByAdminId = adminUserId;
                     report.ReviewedDate = DateTime.UtcNow;
+                    updatedReportsCount++;
                 }
 
                 await _unitOfWork.CompleteAsync();
-                _logger.LogInformation("Comment {CommentId} blocked by Admin {AdminId}. Pending reports marked as Blocked.", commentId, adminUserId);
+                _logger.LogInformation("Comment {CommentId} blocked by Admin {AdminUserId}. {UpdatedReportsCount} pending reports marked as '{NewStatus}'.",
+                    commentId, adminUserId, updatedReportsCount, ReportStatus.Blocked.ToString());
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error blocking Comment {CommentId}", commentId);
+                _logger.LogError(ex, "Error blocking Comment {CommentId} by Admin {AdminUserId}.", commentId, adminUserId);
                 return false;
             }
         }
 
         public async Task<bool> UnblockCommentAsync(int commentId, string adminUserId)
         {
+            if (commentId <= 0 || string.IsNullOrWhiteSpace(adminUserId))
+            {
+                _logger.LogWarning("UnblockCommentAsync: Invalid parameters. CommentId: {CommentId}, AdminUserId: '{AdminUserId}'.", commentId, adminUserId);
+                return false;
+            }
             try
             {
                 var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-                if (comment == null || !comment.IsBlocked)
+                if (comment == null)
                 {
-                    _logger.LogWarning("UnblockComment: Comment {CommentId} not found or not blocked.", commentId);
+                    _logger.LogWarning("UnblockComment: Comment {CommentId} not found. Action by Admin {AdminUserId}.", commentId, adminUserId);
+                    return false;
+                }
+                if (!comment.IsBlocked)
+                {
+                    _logger.LogInformation("UnblockComment: Comment {CommentId} is not currently blocked. Action by Admin {AdminUserId}.", commentId, adminUserId);
                     return false;
                 }
 
                 comment.IsBlocked = false;
-                comment.LastUpdatedDate = DateTime.UtcNow;
+                comment.LastUpdatedDate = DateTime.UtcNow; 
 
                 await _unitOfWork.CompleteAsync();
-                _logger.LogInformation("Comment {CommentId} unblocked by Admin {AdminId}", commentId, adminUserId);
+                _logger.LogInformation("Comment {CommentId} unblocked by Admin {AdminUserId}.", commentId, adminUserId);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error unblocking Comment {CommentId}", commentId);
+                _logger.LogError(ex, "Error unblocking Comment {CommentId} by Admin {AdminUserId}.", commentId, adminUserId);
                 return false;
             }
         }
 
         public async Task<bool> DismissReportAsync(int reportId, string adminUserId)
         {
+            if (reportId <= 0 || string.IsNullOrWhiteSpace(adminUserId))
+            {
+                _logger.LogWarning("DismissReportAsync: Invalid parameters. ReportId: {ReportId}, AdminUserId: '{AdminUserId}'.", reportId, adminUserId);
+                return false;
+            }
             try
             {
                 var report = await _unitOfWork.CommentReports.GetByIdAsync(reportId);
-                if (report == null || report.Status != ReportStatus.Pending)
+                if (report == null)
                 {
-                    _logger.LogWarning("DismissReport: Report {ReportId} not found or not pending.", reportId);
+                    _logger.LogWarning("DismissReport: Report {ReportId} not found. Action by Admin {AdminUserId}.", reportId, adminUserId);
+                    return false;
+                }
+                if (report.Status != ReportStatus.Pending)
+                {
+                    _logger.LogInformation("DismissReport: Report {ReportId} is not pending (Status: {ReportStatus}). Action by Admin {AdminUserId}.", reportId, report.Status, adminUserId);
                     return false;
                 }
 
@@ -190,32 +241,15 @@ namespace BlogApp.BLL.Services
                 report.ReviewedDate = DateTime.UtcNow;
 
                 await _unitOfWork.CompleteAsync();
-                _logger.LogInformation("Report {ReportId} dismissed by Admin {AdminId}", reportId, adminUserId);
+                _logger.LogInformation("Report {ReportId} for Comment {CommentId} dismissed by Admin {AdminUserId}. Status changed to '{NewStatus}'.",
+                    reportId, report.CommentId, adminUserId, report.Status.ToString());
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error dismissing Report {ReportId}", reportId);
+                _logger.LogError(ex, "Error dismissing Report {ReportId} by Admin {AdminUserId}.", reportId, adminUserId);
                 return false;
             }
-        }
-    }
-
-    // TempDataHelper can be removed if not used elsewhere, or kept if it is.
-    // It's not directly related to the ViewModel/DTO refactoring.
-    public static class TempDataHelper
-    {
-        [ThreadStatic]
-        private static Action<string>? _setWarningMessageAction;
-
-        public static void Configure(Action<string> setWarningMessageAction)
-        {
-            _setWarningMessageAction = setWarningMessageAction;
-        }
-
-        public static void SetWarningMessage(string message)
-        {
-            _setWarningMessageAction?.Invoke(message);
         }
     }
 }

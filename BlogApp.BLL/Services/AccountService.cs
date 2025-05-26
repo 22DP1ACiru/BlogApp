@@ -1,8 +1,6 @@
 ﻿using BlogApp.BLL.Interfaces;
 using BlogApp.Core.Entities;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 namespace BlogApp.BLL.Services
 {
@@ -11,7 +9,9 @@ namespace BlogApp.BLL.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AccountService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public AccountService(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -25,21 +25,25 @@ namespace BlogApp.BLL.Services
 
         public async Task<SignInResult> LoginUserAsync(string email, string password, bool rememberMe)
         {
+            // Attempt to find the user by email first.
             var user = await _userManager.FindByEmailAsync(email);
-
             if (user == null)
             {
-                return SignInResult.Failed; // User not found by the email provided
+                return SignInResult.Failed;
             }
 
-            var result = await _signInManager.PasswordSignInAsync(
+            // Ensure user.UserName is not null or empty before calling PasswordSignInAsync
+            if (string.IsNullOrEmpty(user.UserName))
+            {
+                return SignInResult.Failed;
+            }
+
+            return await _signInManager.PasswordSignInAsync(
                 user.UserName,
                 password,
                 rememberMe,
                 lockoutOnFailure: true
             );
-
-            return result;
         }
 
         public async Task LogoutUserAsync()

@@ -1,9 +1,11 @@
-﻿using System.Threading.Tasks;
-using BlogApp.Core.Entities;
+﻿using BlogApp.Core.Entities;
 using Microsoft.AspNetCore.Identity;
 
 namespace BlogApp.BLL.Interfaces
 {
+    /// <summary>
+    /// Defines operations related to user account management.
+    /// </summary>
     public interface IAccountService
     {
         Task<IdentityResult> RegisterUserAsync(ApplicationUser user, string password);

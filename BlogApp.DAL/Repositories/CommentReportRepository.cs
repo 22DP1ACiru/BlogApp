@@ -3,7 +3,6 @@ using BlogApp.DAL.Data;
 using BlogApp.DAL.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace BlogApp.DAL.Repositories
 {
     public class CommentReportRepository : Repository<CommentReport>, ICommentReportRepository
@@ -15,7 +14,7 @@ namespace BlogApp.DAL.Repositories
             return await _context.CommentReports
                                  .Where(cr => cr.Status == ReportStatus.Pending)
                                  .Include(cr => cr.Comment)
-                                     .ThenInclude(c => c.Article)
+                                     .ThenInclude(c => c!.Article)
                                  .Include(cr => cr.ReporterUser)
                                  .OrderByDescending(cr => cr.ReportDate)
                                  .ToListAsync();
@@ -25,7 +24,7 @@ namespace BlogApp.DAL.Repositories
         {
             return await _context.CommentReports
                                 .Include(cr => cr.Comment)
-                                    .ThenInclude(c => c.Article)
+                                    .ThenInclude(c => c!.Article)
                                 .Include(cr => cr.ReporterUser)
                                 .Include(cr => cr.ReviewedByAdmin)
                                 .FirstOrDefaultAsync(cr => cr.Id == reportId);

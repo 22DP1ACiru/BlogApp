@@ -1,7 +1,4 @@
-﻿using BlogApp.Core.Entities;
-using System.Collections.Generic;
-
-namespace BlogApp.BLL.DTOs
+﻿namespace BlogApp.BLL.DTOs
 {
     public class GroupedCommentReportDto
     {

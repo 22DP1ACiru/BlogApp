@@ -29,7 +29,6 @@ namespace BlogApp.DAL.Repositories
             _context.ArticleVotes.Remove(vote);
         }
 
-
         public async Task<ArticleVote?> FindByUserAndArticleAsync(string userId, int articleId)
         {
             return await _context.ArticleVotes
@@ -45,6 +44,7 @@ namespace BlogApp.DAL.Repositories
 
         public async Task<int> GetScoreForArticleAsync(int articleId)
         {
+            // SumAsync will return 0 if there are no matching votes.
             return await _context.ArticleVotes
                                 .Where(v => v.ArticleId == articleId)
                                 .SumAsync(v => v.VoteValue);
