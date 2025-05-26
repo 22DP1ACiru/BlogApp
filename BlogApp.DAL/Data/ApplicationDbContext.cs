@@ -42,7 +42,7 @@ namespace BlogApp.DAL.Data
 
 
             builder.Entity<ArticleVote>().ToTable("ArticleVotes");
-            
+
             builder.Entity<ArticleVote>().HasKey(av => av.Id);
 
             builder.Entity<ArticleVote>()
@@ -123,9 +123,15 @@ namespace BlogApp.DAL.Data
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            builder.Entity<CommentReport>()
-                .HasIndex(cr => new { cr.CommentId, cr.ReporterUserId })
-                .IsUnique();
+            // Removed unique index: cr.CommentId, cr.ReporterUserId
+            // The logic in ModerationService.ReportCommentAsync already prevents
+            // a user from creating a new report if they already have a PENDING one
+            // for the same comment. Removing this DB constraint allows re-reporting
+            // if the previous report was actioned (Reviewed/Blocked) and the comment
+            // is problematic again.
+            // builder.Entity<CommentReport>()
+            //     .HasIndex(cr => new { cr.CommentId, cr.ReporterUserId })
+            //     .IsUnique();
         }
     }
 }

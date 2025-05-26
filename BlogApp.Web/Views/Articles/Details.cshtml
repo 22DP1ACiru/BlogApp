@@ -105,9 +105,9 @@
 
     @if (isAdmin && blockedCommentCount > 0)
     {
-        <div class="mb-3">
-            <button id="showBlockedCommentsBtn" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-eye-slash-fill me-1"></i> There are @blockedCommentCount blocked comments on this article. Do you want to see them?
+        <div class="mb-3 alert alert-warning p-2">
+            <button id="showBlockedCommentsBtn" class="btn btn-link text-decoration-none p-0 text-dark fw-bold">
+                <i class="bi bi-eye-slash-fill me-1"></i> There @(blockedCommentCount == 1 ? "is" : "are") @blockedCommentCount blocked comment@(blockedCommentCount == 1 ? "" : "s") on this article. Click to view/manage.
             </button>
         </div>
     }
@@ -267,10 +267,14 @@
             if (showBlockedBtn) {
                 showBlockedBtn.addEventListener('click', function() {
                     document.querySelectorAll('.admin-view-blocked-comment.initially-hidden').forEach(function(commentElement) {
-                        commentElement.classList.remove('initially-hidden');
-                        commentElement.style.display = 'flex'; // Assuming .comment-container uses d-flex
+                        // Check if it's already visible from a previous click (though button hides)
+                        if(commentElement.classList.contains('initially-hidden')) {
+                            commentElement.classList.remove('initially-hidden');
+                            // commentElement.style.display = 'flex'; // Assuming .comment-container uses d-flex. Bootstrap d-flex should handle it.
+                        }
                     });
-                    this.style.display = 'none'; // Hide the button itself
+                    // this.style.display = 'none'; // Hide the button itself
+                    this.closest('.alert').style.display = 'none'; // Hide the parent alert div
                 });
             }
         });

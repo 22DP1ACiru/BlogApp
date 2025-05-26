@@ -1,4 +1,5 @@
-﻿@model List<BlogApp.Web.Models.CommentReportViewModel>
+﻿@model List<BlogApp.Web.Models.AdminReportedCommentViewModel>
+@using BlogApp.Core.Entities
 
 @{
     ViewData["Title"] = "Pending Comment Reports";
@@ -31,55 +32,79 @@
 }
 else
 {
-    <p>Review the following comments that have been reported by users. Blocked comments will also update the associated report status.</p>
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover table-sm align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Report Date</th>
-                    <th>Reported By</th>
-                    <th>Comment Preview</th>
-                    <th>Reason</th>
-                    <th>Article</th>
-                    <th style="min-width: 250px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var report in Model)
-                {
-                    <tr class="@(report.Status == BlogApp.Core.Entities.ReportStatus.Pending ? "table-warning" : "")">
-                        <td>@report.ReportDate.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td>@report.ReporterUsername</td>
-                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@report.ReportedCommentContent">
-                            @Html.DisplayFor(m => report.ReportedCommentContent)
-                        </td>
-                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@report.Reason">
-                            @Html.DisplayFor(m => report.Reason)
-                        </td>
-                        <td>
-                            <a asp-controller="Articles" asp-action="Details" asp-route-id="@report.ArticleId" target="_blank" title="View article: @report.ArticleTitle">
-                                @(report.ArticleTitle.Length > 30 ? report.ArticleTitle.Substring(0, 30) + "..." : report.ArticleTitle) <i class="bi bi-box-arrow-up-right small"></i>
-                            </a>
-                        </td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <form asp-action="BlockComment" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="commentId" value="@report.CommentId" />
-                                    <input type="hidden" name="reportId" value="@report.ReportId" />
-                                    <button type="submit" class="btn btn-danger" title="Block this Comment"><i class="bi bi-slash-circle-fill"></i> Block</button>
-                                </form>
-                                <form asp-action="DismissReport" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="reportId" value="@report.ReportId" />
-                                    <button type="submit" class="btn btn-secondary" title="Dismiss this Report (comment is ok)"><i class="bi bi-hand-thumbs-up"></i> Dismiss</button>
-                                </form>
-                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@report.ArticleId" fragment="comment-@report.CommentId" target="_blank" class="btn btn-info" title="View Comment in Context"><i class="bi bi-eye"></i> View</a>
+    <p>Review the following comments that have pending reports. Blocking a comment will resolve all its pending reports.</p>
+    <div class="accordion" id="reportedCommentsAccordion">
+        @foreach (var reportedCommentGroup in Model)
+        {
+            string accordionItemId = $"comment-group-{reportedCommentGroup.CommentId}";
+            string collapseId = $"collapse-{reportedCommentGroup.CommentId}";
+
+            <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="heading-@reportedCommentGroup.CommentId">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                        <div class="w-100 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold text-truncate" style="max-width: 400px;" title="@reportedCommentGroup.FullCommentContent">
+                                    Comment Preview: "@reportedCommentGroup.ReportedCommentContentPreview"
+                                </span>
+                                <small class="text-muted ms-2">
+                                    on Article: <a asp-controller="Articles" asp-action="Details" asp-route-id="@reportedCommentGroup.ArticleId" target="_blank" class="text-decoration-none" onclick="event.stopPropagation();">
+                                        @reportedCommentGroup.ArticleTitle <i class="bi bi-box-arrow-up-right small"></i>
+                                    </a>
+                                </small>
                             </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                            <span class="badge bg-warning text-dark rounded-pill me-3">
+                                @reportedCommentGroup.PendingReportCount Pending Report@(reportedCommentGroup.PendingReportCount > 1 ? "s" : "")
+                            </span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="heading-@reportedCommentGroup.CommentId" data-bs-parent="#reportedCommentsAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            <strong>Full Comment Content:</strong>
+                            <blockquote class="blockquote-footer mt-1 mb-0 p-2 bg-light border rounded" style="white-space: pre-wrap;">@reportedCommentGroup.FullCommentContent</blockquote>
+                        </div>
+
+                        <div class="mb-3">
+                            <form asp-action="BlockComment" method="post" class="d-inline me-2" onsubmit="return confirm('Are you sure you want to block this comment? This will resolve all its pending reports.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="commentId" value="@reportedCommentGroup.CommentId" />
+                                <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-slash-circle-fill"></i> Block This Comment</button>
+                            </form>
+                             <a asp-controller="Articles" asp-action="Details" asp-route-id="@reportedCommentGroup.ArticleId" fragment="comment-@reportedCommentGroup.CommentId" target="_blank" class="btn btn-info btn-sm" title="View Comment in Context"><i class="bi bi-eye"></i> View in Article</a>
+                        </div>
+                        
+                        <h5>Individual Reports (@reportedCommentGroup.PendingReportCount):</h5>
+                        @if (reportedCommentGroup.IndividualReports.Any())
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var report in reportedCommentGroup.IndividualReports)
+                                {
+                                    <li class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>Reporter:</strong> @report.ReporterUsername <br />
+                                                <strong>Date:</strong> @report.ReportDate.ToString("yyyy-MM-dd HH:mm") <br />
+                                                <strong>Reason:</strong> @(string.IsNullOrEmpty(report.Reason) ? "N/A" : report.Reason)
+                                            </div>
+                                            <form asp-action="DismissReport" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to dismiss this specific report? The comment will remain active unless blocked separately or all other reports are actioned.');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="reportId" value="@report.ReportId" />
+                                                <button type="submit" class="btn btn-outline-secondary btn-sm" title="Dismiss this specific report"><i class="bi bi-hand-thumbs-up"></i> Dismiss Report</button>
+                                            </form>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No individual reports found for this group (this should not happen if count > 0).</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 }

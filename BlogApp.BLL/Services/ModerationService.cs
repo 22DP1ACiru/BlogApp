@@ -1,6 +1,7 @@
 ﻿using BlogApp.BLL.Interfaces;
 using BlogApp.Core.Entities;
 using BlogApp.DAL.Interfaces;
+using BlogApp.BLL.DTOs;
 using Microsoft.Extensions.Logging;
 
 namespace BlogApp.BLL.Services
@@ -21,20 +22,19 @@ namespace BlogApp.BLL.Services
             var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
             if (comment == null)
             {
-                _logger.LogWarning("Failed to report: Comment {CommentId} not found. Maybe it does not exist?", commentId);
+                _logger.LogWarning("Failed to report: Comment {CommentId} not found.", commentId);
                 return false;
             }
 
             if (comment.UserId == reporterUserId)
             {
-                _logger.LogWarning("Failed to report: Comment {CommentId} belongs to Reporter {ReporterUserId}", commentId, reporterUserId);
+                _logger.LogWarning("User {ReporterUserId} attempted to report their own comment {CommentId}.", reporterUserId, commentId);
                 return false;
             }
 
             if (await _unitOfWork.CommentReports.HasUserPendingReportForCommentAsync(commentId, reporterUserId))
             {
-                _logger.LogInformation("User {UserId} tried to report Comment {CommentId} again, but already has a pending report.", reporterUserId, commentId);
-                TempDataHelper.SetWarningMessage("You already have a pending report for this comment.");
+                _logger.LogInformation("User {UserId} tried to report Comment {CommentId} again, but already has a PENDING report.", reporterUserId, commentId);
                 return false;
             }
 
@@ -46,7 +46,7 @@ namespace BlogApp.BLL.Services
                     ReporterUserId = reporterUserId,
                     Reason = reason,
                     ReportDate = DateTime.UtcNow,
-                    Status = ReportStatus.Pending // New reports are always pending
+                    Status = ReportStatus.Pending
                 };
                 await _unitOfWork.CommentReports.AddAsync(report);
                 await _unitOfWork.CompleteAsync();
@@ -60,13 +60,59 @@ namespace BlogApp.BLL.Services
             }
         }
 
-        public async Task<IEnumerable<CommentReport>> GetPendingReportsAsync()
+        public async Task<IEnumerable<GroupedCommentReportDto>> GetGroupedPendingReportsAsync()
         {
-            try { return await _unitOfWork.CommentReports.GetPendingReportsWithDetailsAsync(); }
+            try
+            {
+                var pendingReports = await _unitOfWork.CommentReports.GetPendingReportsWithDetailsAsync();
+                if (pendingReports == null || !pendingReports.Any())
+                {
+                    return Enumerable.Empty<GroupedCommentReportDto>();
+                }
+
+                var groupedReportDtos = pendingReports
+                    .GroupBy(r => r.CommentId)
+                    .Select(group =>
+                    {
+                        var firstReportInGroup = group.First();
+                        var comment = firstReportInGroup.Comment;
+
+                        if (comment == null)
+                        {
+                            _logger.LogWarning("CommentReport {ReportId} associated with non-existent CommentId {CommentId}. Skipping.", firstReportInGroup.Id, firstReportInGroup.CommentId);
+                            return null;
+                        }
+
+                        return new GroupedCommentReportDto
+                        {
+                            CommentId = comment.Id,
+                            CommentContentPreview = comment.Content?.Length > 100 ? comment.Content.Substring(0, 100) + "..." : comment.Content ?? "[Content Missing]",
+                            FullCommentContent = comment.Content ?? "[Content Missing]",
+                            ArticleId = comment.ArticleId,
+                            ArticleTitle = comment.Article?.Title ?? "[Article Deleted/Missing]",
+                            IsCommentBlocked = comment.IsBlocked,
+                            PendingReportCount = group.Count(r => r.Status == ReportStatus.Pending), // Ensure we only count pending
+                            IndividualReportDetails = group.Where(r => r.Status == ReportStatus.Pending) // And only include pending details
+                                                           .Select(r => new ReportDetailDto
+                                                           {
+                                                               ReportId = r.Id,
+                                                               ReporterUsername = r.ReporterUser?.UserName ?? "Unknown User",
+                                                               ReportDate = r.ReportDate,
+                                                               Reason = r.Reason,
+                                                               Status = r.Status
+                                                           }).OrderByDescending(ir => ir.ReportDate).ToList()
+                        };
+                    })
+                    .Where(dto => dto != null && dto.PendingReportCount > 0) // Ensure there are pending reports in the group
+                    .OrderByDescending(dto => dto!.IndividualReportDetails.Any() ? dto.IndividualReportDetails.Max(ir => ir.ReportDate) : DateTime.MinValue)
+                    .ToList();
+
+                return groupedReportDtos;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting pending reports, returning empty enumerable.");
-                return Enumerable.Empty<CommentReport>();
+                _logger.LogError(ex, "Error getting and grouping pending reports for DTOs.");
+                return Enumerable.Empty<GroupedCommentReportDto>();
             }
         }
 
@@ -75,22 +121,25 @@ namespace BlogApp.BLL.Services
             try
             {
                 var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-                if (comment == null || comment.IsBlocked) return false;
+                if (comment == null || comment.IsBlocked)
+                {
+                    _logger.LogWarning("BlockComment: Comment {CommentId} not found or already blocked.", commentId);
+                    return false;
+                }
 
                 comment.IsBlocked = true;
                 comment.LastUpdatedDate = DateTime.UtcNow;
 
-                // Find PENDING reports for this comment and mark them as Blocked
                 var reports = await _unitOfWork.CommentReports.FindAsync(r => r.CommentId == commentId && r.Status == ReportStatus.Pending);
                 foreach (var report in reports)
                 {
-                    report.Status = ReportStatus.Blocked;
+                    report.Status = ReportStatus.Blocked; // Or "ActionedByBlock"
                     report.ReviewedByAdminId = adminUserId;
                     report.ReviewedDate = DateTime.UtcNow;
                 }
 
                 await _unitOfWork.CompleteAsync();
-                _logger.LogInformation("Comment {CommentId} blocked by Admin {AdminId}. Associated pending reports updated.", commentId, adminUserId);
+                _logger.LogInformation("Comment {CommentId} blocked by Admin {AdminId}. Pending reports marked as Blocked.", commentId, adminUserId);
                 return true;
             }
             catch (Exception ex)
@@ -105,14 +154,14 @@ namespace BlogApp.BLL.Services
             try
             {
                 var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-                if (comment == null || !comment.IsBlocked) return false;
+                if (comment == null || !comment.IsBlocked)
+                {
+                    _logger.LogWarning("UnblockComment: Comment {CommentId} not found or not blocked.", commentId);
+                    return false;
+                }
 
                 comment.IsBlocked = false;
                 comment.LastUpdatedDate = DateTime.UtcNow;
-
-                // Note: We are NOT changing the status of 'Blocked' reports back to 'Pending' or 'Reviewed' here.
-                // If the comment is unblocked and becomes problematic again, it should be re-reported.
-                // This keeps the history of it having been blocked.
 
                 await _unitOfWork.CompleteAsync();
                 _logger.LogInformation("Comment {CommentId} unblocked by Admin {AdminId}", commentId, adminUserId);
@@ -130,9 +179,13 @@ namespace BlogApp.BLL.Services
             try
             {
                 var report = await _unitOfWork.CommentReports.GetByIdAsync(reportId);
-                if (report == null || report.Status != ReportStatus.Pending) return false;
+                if (report == null || report.Status != ReportStatus.Pending)
+                {
+                    _logger.LogWarning("DismissReport: Report {ReportId} not found or not pending.", reportId);
+                    return false;
+                }
 
-                report.Status = ReportStatus.Reviewed; // Mark as reviewed, not affecting the comment's blocked status directly
+                report.Status = ReportStatus.Reviewed;
                 report.ReviewedByAdminId = adminUserId;
                 report.ReviewedDate = DateTime.UtcNow;
 
@@ -148,11 +201,11 @@ namespace BlogApp.BLL.Services
         }
     }
 
-    // Simple static helper for TempData, if you decide to use it for service layer messages.
-    // This is a basic example; in a real app, you might use a more sophisticated notification system.
+    // TempDataHelper can be removed if not used elsewhere, or kept if it is.
+    // It's not directly related to the ViewModel/DTO refactoring.
     public static class TempDataHelper
     {
-        [ThreadStatic] // Important for web apps to keep it per-request
+        [ThreadStatic]
         private static Action<string>? _setWarningMessageAction;
 
         public static void Configure(Action<string> setWarningMessageAction)

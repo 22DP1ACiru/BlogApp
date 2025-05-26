@@ -1,6 +1,7 @@
 ﻿using BlogApp.Core.Constants;
 using BlogApp.Core.Entities;
 using BlogApp.BLL.Interfaces;
+using BlogApp.BLL.DTOs;
 using BlogApp.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -37,7 +38,6 @@ namespace BlogApp.Web.Controllers
             var users = await _userManager.Users.ToListAsync();
             var userRoleViewModels = new List<UserRoleViewModel>();
 
-            // Prepare view models with user roles
             foreach (var user in users)
             {
                 var roles = await _userManager.GetRolesAsync(user);
@@ -49,10 +49,10 @@ namespace BlogApp.Web.Controllers
                     Roles = roles
                 });
             }
-
             return View(userRoleViewModels);
         }
 
+        // ... (Role assignment methods remain the same) ...
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AssignAuthorRole(string userId)
@@ -94,7 +94,6 @@ namespace BlogApp.Web.Controllers
         {
             return await RemoveRoleAsync(userId, AppRoles.Commenter);
         }
-
         private async Task<IActionResult> AssignRoleAsync(string userId, string roleName)
         {
             if (string.IsNullOrEmpty(userId)) return BadRequest("User ID cannot be empty.");
@@ -174,23 +173,32 @@ namespace BlogApp.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+
         // GET: /Admin/ReportedComments
         [HttpGet]
         public async Task<IActionResult> ReportedComments()
         {
-            var reports = await _moderationService.GetPendingReportsAsync();
+            var groupedReportDtos = await _moderationService.GetGroupedPendingReportsAsync();
 
-            var viewModels = reports.Select(r => new CommentReportViewModel
+            // Map DTOs to ViewModels
+            var viewModels = groupedReportDtos.Select(dto => new AdminReportedCommentViewModel
             {
-                ReportId = r.Id,
-                CommentId = r.CommentId,
-                ReportedCommentContent = r.Comment?.Content?.Length > 100 ? r.Comment.Content.Substring(0, 100) + "..." : r.Comment?.Content ?? "[Comment Deleted]",
-                ReporterUsername = r.ReporterUser?.UserName ?? "Unknown",
-                ReportDate = r.ReportDate,
-                Reason = r.Reason,
-                Status = r.Status,
-                ArticleId = r.Comment?.ArticleId ?? 0,
-                ArticleTitle = r.Comment?.Article?.Title ?? "[Article Deleted]"
+                CommentId = dto.CommentId,
+                ReportedCommentContentPreview = dto.CommentContentPreview,
+                FullCommentContent = dto.FullCommentContent,
+                ArticleId = dto.ArticleId,
+                ArticleTitle = dto.ArticleTitle,
+                IsCommentBlocked = dto.IsCommentBlocked,
+                PendingReportCount = dto.PendingReportCount,
+                IndividualReports = dto.IndividualReportDetails.Select(detailDto => new IndividualReportViewModel
+                {
+                    ReportId = detailDto.ReportId,
+                    ReporterUsername = detailDto.ReporterUsername,
+                    ReportDate = detailDto.ReportDate,
+                    Reason = detailDto.Reason,
+                    Status = detailDto.Status
+                    // ReviewedByAdminUsername and ReviewedDate can be mapped if they were included in ReportDetailDto
+                }).ToList()
             }).ToList();
 
             return View(viewModels);
@@ -199,29 +207,17 @@ namespace BlogApp.Web.Controllers
         // POST: /Admin/BlockComment
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> BlockComment(int commentId, int? reportId = null, string? returnUrl = null, int? articleId = null)
+        public async Task<IActionResult> BlockComment(int commentId, string? returnUrl = null)
         {
             var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (adminUserId == null) return Challenge();
 
             bool success = await _moderationService.BlockCommentAsync(commentId, adminUserId);
 
-            if (success) TempData["SuccessMessage"] = "Comment blocked successfully.";
-            else TempData["ErrorMessage"] = "Failed to block comment (it might already be blocked or deleted).";
+            if (success) TempData["SuccessMessage"] = "Comment blocked successfully. All associated pending reports have been marked as actioned.";
+            else TempData["ErrorMessage"] = "Failed to block comment (it might already be blocked, deleted, or had no pending reports).";
 
-            if (Url.IsLocalUrl(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-            if (articleId.HasValue)
-            {
-                return RedirectToAction("Details", "Articles", new { id = articleId.Value, fragment = $"comment-{commentId}" });
-            }
-            if (reportId.HasValue)
-            {
-                return RedirectToAction(nameof(ReportedComments));
-            }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(ReportedComments));
         }
 
         // POST: /Admin/UnblockComment
@@ -237,19 +233,10 @@ namespace BlogApp.Web.Controllers
             if (success) TempData["SuccessMessage"] = "Comment unblocked successfully.";
             else TempData["ErrorMessage"] = "Failed to unblock comment (it might not be blocked or doesn't exist).";
 
-            if (Url.IsLocalUrl(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-            if (articleId.HasValue)
-            {
-                // Add fragment to jump to the comment
-                return RedirectToAction("Details", "Articles", new { id = articleId.Value, fragment = $"comment-{commentId}" });
-            }
-
+            if (Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
+            if (articleId.HasValue) return RedirectToAction("Details", "Articles", new { id = articleId.Value, fragment = $"comment-{commentId}" });
             return RedirectToAction(nameof(ReportedComments));
         }
-
 
         // POST: /Admin/DismissReport
         [HttpPost]
@@ -262,7 +249,7 @@ namespace BlogApp.Web.Controllers
             bool success = await _moderationService.DismissReportAsync(reportId, adminUserId);
 
             if (success) TempData["SuccessMessage"] = "Report dismissed successfully.";
-            else TempData["ErrorMessage"] = "Failed to dismiss report (it might have already been actioned).";
+            else TempData["ErrorMessage"] = "Failed to dismiss report (it might have already been actioned or doesn't exist).";
 
             return RedirectToAction(nameof(ReportedComments));
         }
