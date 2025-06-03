@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "Page Not Found (404)";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Ensure it uses your main layout
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <div class="error-template">
+                <h1 class="display-1 fw-bold text-primary">
+                    Oops!
+                </h1>
+                <h2 class="display-4">
+                    404 Not Found
+                </h2>
+                <div class="error-details fs-5 text-muted mb-4">
+                    Sorry, an error has occurred. The page you are looking for cannot be found!
+                </div>
+                <div class="error-actions">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house-door-fill me-2"></i>
+                        Take Me Home
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg ms-2">
+                        <i class="bi bi-arrow-left-circle-fill me-2"></i>
+                        Go Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .error-template {
+        padding: 40px 15px;
+        text-align: center;
+    }
+
+    .error-actions .btn {
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+</style>

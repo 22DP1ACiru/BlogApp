@@ -112,7 +112,9 @@ else
                         @foreach (var item in Model.TopRankedArticles.OrderBy(a => Model.TopRankedArticles.IndexOf(a)))
                         {
                             <li class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
-                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-truncate me-2 text-decoration-none">@item.Title</a>
+                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" 
+                                   class="text-truncate me-2 text-decoration-none" 
+                                   style="max-width: calc(100% - 60px);" title="@item.Title">@item.Title</a>
                                 <span class="badge @(item.Score > 0 ? "bg-success" : (item.Score < 0 ? "bg-danger" : "bg-secondary")) rounded-pill">
                                     <i class="bi @(item.Score > 0 ? "bi-arrow-up" : (item.Score < 0 ? "bi-arrow-down" : "bi-dash-lg"))"></i> @item.Score
                                 </span>
@@ -135,8 +137,9 @@ else
                     <ul class="list-unstyled mb-0">
                         @foreach (var item in Model.LastCommentedArticles.OrderBy(a => Model.LastCommentedArticles.IndexOf(a)))
                         {
-                            <li class="mb-1 border-bottom pb-1">
-                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none">@item.Title</a>
+                             <li class="mb-1 border-bottom pb-1">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-id="@item.Id" 
+                                   class="text-decoration-none d-inline-block text-truncate" style="max-width: 100%;" title="@item.Title">@item.Title</a>
                             </li>
                         }
                     </ul>

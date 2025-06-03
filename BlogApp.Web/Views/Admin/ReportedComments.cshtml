@@ -44,13 +44,17 @@ else
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
                         <div class="w-100 d-flex justify-content-between align-items-center">
                             <div>
-                                <span class="fw-bold text-truncate" style="max-width: 400px;" title="@reportedCommentGroup.FullCommentContent">
+                                <span class="fw-bold d-inline-block text-truncate" style="max-width: 350px;" title="@reportedCommentGroup.FullCommentContent">
                                     Comment Preview: "@reportedCommentGroup.ReportedCommentContentPreview"
                                 </span>
                                 <small class="text-muted ms-2">
-                                    on Article: <a asp-controller="Articles" asp-action="Details" asp-route-id="@reportedCommentGroup.ArticleId" target="_blank" class="text-decoration-none" onclick="event.stopPropagation();">
-                                        @reportedCommentGroup.ArticleTitle <i class="bi bi-box-arrow-up-right small"></i>
+                                    on Article: 
+                                    <a asp-controller="Articles" asp-action="Details" asp-route-id="@reportedCommentGroup.ArticleId" target="_blank" 
+                                       class="text-decoration-none d-inline-block text-truncate" style="max-width: 200px;" title="@reportedCommentGroup.ArticleTitle"
+                                       onclick="event.stopPropagation();">
+                                        @reportedCommentGroup.ArticleTitle
                                     </a>
+                                    <i class="bi bi-box-arrow-up-right small"></i>
                                 </small>
                             </div>
                             <span class="badge bg-warning text-dark rounded-pill me-3">
@@ -63,7 +67,7 @@ else
                     <div class="accordion-body">
                         <div class="mb-3">
                             <strong>Full Comment Content:</strong>
-                            <blockquote class="blockquote-footer mt-1 mb-0 p-2 bg-light border rounded" style="white-space: pre-wrap;">@reportedCommentGroup.FullCommentContent</blockquote>
+                            <blockquote class="blockquote-footer mt-1 mb-0 p-2 bg-light border rounded" style="white-space: pre-wrap; word-break: break-word;">@reportedCommentGroup.FullCommentContent</blockquote>
                         </div>
 
                         <div class="mb-3">

@@ -156,3 +156,18 @@ body {
   font-size: 0.875em;
   /* No specific styling needed other than text-end, text-muted, text-danger which are applied by JS */
 }
+
+/* Ensure modal body content wraps if it's too long */
+.modal-body {
+  overflow-wrap: break-word;
+  word-wrap: break-word; /* Older browsers */
+}
+
+/* General text truncation helper (if Bootstrap's text-truncate isn't sufficient or specific max-width is needed often) */
+.truncate-text-ellipsis {
+  display: inline-block; /* Or block */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top; /* Helps with alignment if mixed with other inline elements */
+}

@@ -163,7 +163,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>You are about to report <span id="reportModalCommentTargetDescription" class="fw-bold">this comment</span>.</p>
+                    <p style="overflow-wrap: break-word;">You are about to report <span id="reportModalCommentTargetDescription" class="fw-bold" style="overflow-wrap: break-word;">this comment</span>.</p>
                     <div class="mb-3">
                         <label for="reportModalReason" class="form-label">Reason for Reporting (Optional):</label>
                         <textarea class="form-control" id="reportModalReason" name="Reason" rows="3" maxlength="500" placeholder="e.g., spam, offensive content..."></textarea>
@@ -251,7 +251,7 @@
                         const commentTextElement = commentContainer.querySelector('.comment-display-content .card-text'); // Path to comment text
                         if (commentTextElement) {
                             let fullText = commentTextElement.textContent.trim();
-                            const maxLength = 80; // Max length for the snippet
+                            const maxLength = 60; // Reduced Max length for the snippet in modal
                             if (fullText.length > maxLength) {
                                 commentDescriptionText = `the comment beginning with: <i class="text-muted">"${fullText.substring(0, maxLength)}..."</i>`;
                             } else {

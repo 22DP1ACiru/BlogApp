@@ -176,6 +176,9 @@ namespace BlogApp.Web.Controllers
             {
                 TempData["ErrorMessage"] = "Could not process your vote at this time.";
             }
+            // Optionally, set a SuccessMessage if you want feedback for successful votes too
+            // else { TempData["SuccessMessage"] = "Vote registered!"; }
+
 
             return RedirectToAction(nameof(Details), new { id = articleId });
         }
@@ -252,7 +255,7 @@ namespace BlogApp.Web.Controllers
                     if (createdArticle != null)
                     {
                         _logger.LogInformation("Article {ArticleId} created successfully by User {UserId}.", createdArticle.Id, userId);
-                        TempData["StatusMessage"] = "Article created successfully!";
+                        TempData["SuccessMessage"] = "Article created successfully!"; // Changed from StatusMessage
                         return RedirectToAction(nameof(Details), new { id = createdArticle.Id });
                     }
                     else
@@ -374,7 +377,7 @@ namespace BlogApp.Web.Controllers
                         {
                             DeleteArticleImageFile(oldImageUrl);
                         }
-                        TempData["StatusMessage"] = "Article updated successfully!";
+                        TempData["SuccessMessage"] = "Article updated successfully!"; // Changed from StatusMessage
                         return RedirectToAction(nameof(Details), new { id = model.Id });
                     }
                     else
@@ -463,8 +466,8 @@ namespace BlogApp.Web.Controllers
             if (success)
             {
                 _logger.LogInformation("Article {ArticleId} deleted successfully by User {UserId}", id, userId);
-                TempData["StatusMessage"] = "Article deleted successfully!";
-                return RedirectToAction(nameof(Index));
+                TempData["SuccessMessage"] = "Article deleted successfully!"; // Changed from StatusMessage
+                return RedirectToAction(nameof(Index)); // Redirect to Index after delete
             }
             else
             {

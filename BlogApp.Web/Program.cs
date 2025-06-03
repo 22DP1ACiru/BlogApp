@@ -19,7 +19,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
     options.SignIn.RequireConfirmedAccount = true;
     options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier;
     options.ClaimsIdentity.UserNameClaimType = ClaimTypes.Name;
@@ -116,13 +117,18 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Home/Error"); // Handles exceptions (500 errors)
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Middleware to handle 404 Not Found errors by re-executing the request to a custom page
+// IMPORTANT: Place this before UseRouting
+app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+
 
 app.UseRouting();
 
