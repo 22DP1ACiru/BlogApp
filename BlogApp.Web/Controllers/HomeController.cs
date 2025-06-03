@@ -3,6 +3,7 @@ using BlogApp.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using BlogApp.BLL.Interfaces;
 using BlogApp.Core.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BlogApp.Web.Controllers
 {
@@ -75,7 +76,7 @@ namespace BlogApp.Web.Controllers
             {
                 Id = a.Id,
                 Title = a.Title,
-                Content = a.Content?.Length > 100 ? a.Content.Substring(0, 100) + "..." : a.Content, 
+                Content = a.Content?.Length > 100 ? a.Content.Substring(0, 100) + "..." : a.Content,
                 ImageUrl = a.ImageUrl,
                 PublishedDate = a.PublishedDate,
                 AuthorName = a.Author?.UserName ?? "Unknown",
@@ -92,6 +93,18 @@ namespace BlogApp.Web.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        // Action to display the custom 404 page
+        [AllowAnonymous]
+        [Route("Home/NotFoundPage")] // Optional: Define a specific route if needed
+        public IActionResult NotFoundPage()
+        {
+            // Log that the NotFoundPage action was hit.
+            // This is useful to differentiate from direct 404s that might not be caught by UseStatusCodePagesWithReExecute
+            // if UseStatusCodePagesWithReExecute is misconfigured or the path is wrong.
+            _logger.LogWarning("Displaying custom 404 Not Found page for URL: {OriginalPath}", HttpContext.Items["originalPath"] ?? HttpContext.Request.Path);
+            return View("~/Views/Shared/NotFoundPage.cshtml");
         }
     }
 }

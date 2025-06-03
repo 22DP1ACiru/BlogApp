@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Create Article";
+    int articleContentMaxLength = 10000; // Define max length for article content
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -21,7 +22,9 @@
             <div class="mb-3">
                 <label asp-for="Content" class="form-label"></label>
                 @* TODO: Replace textarea with a Rich Text Editor (TinyMCE, CKEditor, etc.) for better user experience *@
-                <textarea asp-for="Content" class="form-control" rows="15"></textarea>
+                <textarea asp-for="Content" class="form-control character-counted" rows="15"
+                    data-max-length="@articleContentMaxLength"></textarea>
+                <div class="char-counter-display text-end text-muted small mt-1"></div>
                 <span asp-validation-for="Content" class="text-danger"></span>
             </div>
 
@@ -33,8 +36,9 @@
 
             <div class="form-group mt-4">
                 <button type="submit" name="SubmitAction" value="Publish" class="btn btn-success me-2">Publish</button>
-                <button type="submit" name="SubmitAction" value="SaveDraft" class="btn btn-primary">Save as Draft</button>
-                
+                <button type="submit" name="SubmitAction" value="SaveDraft" class="btn btn-primary">Save as
+                    Draft</button>
+
                 <a asp-action="MyArticles" class="btn btn-secondary">Cancel</a> @* Go back to My Articles list *@
             </div>
         </form>
@@ -42,6 +46,6 @@
 </div>
 
 @section Scripts {
-        <partial name="_ValidationScriptsPartial" />
+    <partial name="_ValidationScriptsPartial" />
     @* Scripts for Rich Text Editor would go here *@
 }

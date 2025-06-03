@@ -5,110 +5,130 @@
     ViewData["Title"] = "Admin - User Role Management";
 }
 
-<h1>@ViewData["Title"]</h1>
-<p>Assign or remove roles for users.</p>
+<h1><i class="bi bi-people-fill me-2"></i>@ViewData["Title"]</h1>
+<p>Assign or remove roles for users. Administrators have all permissions implicitly and their roles cannot be changed here.</p>
 <hr />
 
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 @if (TempData["WarningMessage"] != null)
 {
-    <div class="alert alert-warning">@TempData["WarningMessage"]</div>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2"></i>@TempData["WarningMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 
 @if (!Model.Any())
 {
-    <p>No users found.</p>
+    <div class="alert alert-info text-center">
+        <i class="bi bi-person-x fs-1 d-block mb-2"></i>
+        No users found in the system.
+    </div>
 }
 else
 {
-    <table class="table table-striped table-hover table-sm">
-        <thead>
-            <tr>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Current Roles</th>
-                <th style="width: 35%;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Model)
-            {
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle">
+            <thead class="table-dark">
                 <tr>
-                    <td>@user.Username</td>
-                    <td>@user.Email</td>
-                    <td>
-                        @if (user.Roles.Any())
-                        {
-                            @string.Join(", ", user.Roles)
-                        }
-                        else
-                        {
-                            <span class="text-muted">No roles</span>
-                        }
-                    </td>
-                    <td>
-                        @if (user.Roles.Contains(AppRoles.Administrator))
-                        {
-                            <span class="badge bg-info text-dark" title="Administrators have all permissions implicitly.">Admin Access</span>
-                        }
-                        else
-                        {
-                            @if (!user.Roles.Contains(AppRoles.Author))
-                            {
-                                <form asp-action="AssignAuthorRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Assign Author Role">Make Author</button>
-                                </form>
-                            }
-                            @if (user.Roles.Contains(AppRoles.Author))
-                            {
-                                <form asp-action="RemoveAuthorRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remove Author Role">Remove Author</button>
-                                </form>
-                            }
-
-                            @if (!user.Roles.Contains(AppRoles.Ranker))
-                            {
-                                <form asp-action="AssignRankerRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Assign Ranker Role">Make Ranker</button>
-                                </form>
-                            }
-                            @if (user.Roles.Contains(AppRoles.Ranker))
-                            {
-                                <form asp-action="RemoveRankerRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remove Ranker Role">Remove Ranker</button>
-                                </form>
-                            }
-
-                            @if (!user.Roles.Contains(AppRoles.Commenter))
-                            {
-                                <form asp-action="AssignCommenterRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Assign Commenter Role">Make Commenter</button>
-                                </form>
-                            }
-                            @if (user.Roles.Contains(AppRoles.Commenter))
-                            {
-                                <form asp-action="RemoveCommenterRole" method="post" class="d-inline me-1">
-                                    @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remove Commenter Role">Remove Commenter</button>
-                                </form>
-                            }
-                        }
-                    </td>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Current Roles</th>
+                    <th style="min-width: 400px;">Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr>
+                        <td><strong>@user.Username</strong></td>
+                        <td>@user.Email</td>
+                        <td>
+                            @if (user.Roles.Any())
+                            {
+                                foreach (var role in user.Roles)
+                                {
+                                    var badgeClass = role == AppRoles.Administrator ? "bg-danger" : (role == AppRoles.Author ? "bg-primary" : (role == AppRoles.Ranker ? "bg-info text-dark" : "bg-secondary"));
+                                    <span class="badge @badgeClass me-1">@role</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted fst-italic">No roles</span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.Roles.Contains(AppRoles.Administrator))
+                            {
+                                <span class="badge bg-danger p-2"><i class="bi bi-shield-lock-fill me-1"></i> System Administrator</span>
+                            }
+                            else
+                            {
+                                <div class="btn-group btn-group-sm" role="group">
+                                    @if (!user.Roles.Contains(AppRoles.Author))
+                                    {
+                                        <form asp-action="AssignAuthorRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-success" title="Assign Author Role"><i class="bi bi-person-plus"></i> Author</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="RemoveAuthorRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-warning" title="Remove Author Role"><i class="bi bi-person-dash"></i> Author</button>
+                                        </form>
+                                    }
+
+                                    @if (!user.Roles.Contains(AppRoles.Ranker))
+                                    {
+                                        <form asp-action="AssignRankerRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-success" title="Assign Ranker Role"><i class="bi bi-person-plus"></i> Ranker</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="RemoveRankerRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-warning" title="Remove Ranker Role"><i class="bi bi-person-dash"></i> Ranker</button>
+                                        </form>
+                                    }
+
+                                    @if (!user.Roles.Contains(AppRoles.Commenter))
+                                    {
+                                        <form asp-action="AssignCommenterRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-success" title="Assign Commenter Role"><i class="bi bi-person-plus"></i> Commenter</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="RemoveCommenterRole" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken() <input type="hidden" name="userId" value="@user.UserId" />
+                                            <button type="submit" class="btn btn-outline-warning" title="Remove Commenter Role"><i class="bi bi-person-dash"></i> Commenter</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }

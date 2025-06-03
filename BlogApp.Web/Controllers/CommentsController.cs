@@ -13,15 +13,18 @@ namespace BlogApp.Web.Controllers
     public class CommentsController : Controller
     {
         private readonly ICommentService _commentService;
+        private readonly IModerationService _moderationService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<CommentsController> _logger;
 
         public CommentsController(
             ICommentService commentService,
             UserManager<ApplicationUser> userManager,
+            IModerationService moderationService,
             ILogger<CommentsController> logger)
         {
             _commentService = commentService;
+            _moderationService = moderationService;
             _userManager = userManager;
             _logger = logger;
         }
@@ -139,5 +142,38 @@ namespace BlogApp.Web.Controllers
             return RedirectToAction("Details", "Articles", new { id = articleId });
         }
 
+        // POST: /Comments/Report
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Report(ReportCommentViewModel model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized("User not found.");
+
+            if (model.CommentId <= 0 || model.ArticleId <= 0)
+            {
+                _logger.LogWarning("Report comment failed: Invalid CommentId ({CommentId}) or ArticleId ({ArticleId}) received.", model.CommentId, model.ArticleId);
+                TempData["ErrorMessage"] = "Invalid request.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            // Call the moderation service to handle the report logic
+            // (Service handles checks like 'already reported', 'reporting own comment')
+            bool success = await _moderationService.ReportCommentAsync(model.CommentId, userId, model.Reason);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = "Comment reported successfully. Thank you.";
+                _logger.LogInformation("Comment {CommentId} successfully reported by user {UserId}.", model.CommentId, userId);
+            }
+            else
+            {
+                // Moderation service might return false if already reported, etc.
+                TempData["WarningMessage"] = "Could not submit report (you might have already reported this comment).";
+                _logger.LogWarning("ReportCommentAsync returned false for Comment {CommentId} by User {UserId}.", model.CommentId, userId);
+            }
+
+            return RedirectToAction("Details", "Articles", new { id = model.ArticleId });
+        }
     }
 }

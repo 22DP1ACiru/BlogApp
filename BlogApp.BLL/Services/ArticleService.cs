@@ -183,15 +183,18 @@ namespace BlogApp.BLL.Services
         {
             try
             {
-                if (!imageUrl.StartsWith("/images/profiles/"))
+                // Corrected path check for article images
+                if (!imageUrl.StartsWith("/images/articles/"))
                 {
-                    _logger.LogWarning("Skipping file deletion for article {ArticleId}. ImageUrl '{ImageUrl}' does not match expected format.", articleId, imageUrl);
+                    _logger.LogWarning("Skipping file deletion for article {ArticleId}. ImageUrl '{ImageUrl}' does not match expected article image format.", articleId, imageUrl);
                     return;
                 }
 
                 var relativePath = imageUrl.TrimStart('/');
-                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath);
-                string filePath = Path.Combine(uploadsFolder, relativePath);
+                // Ensure web root path is correctly combined
+                string uploadsFolder = _webHostEnvironment.WebRootPath; // WebRootPath already points to wwwroot
+                string filePath = Path.Combine(uploadsFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
 
                 if (System.IO.File.Exists(filePath))
                 {
@@ -205,12 +208,10 @@ namespace BlogApp.BLL.Services
             }
             catch (IOException ioEx)
             {
-                // Log IO errors specifically (permissions, file in use, etc.)
                 _logger.LogError(ioEx, "IO Error deleting article image file {FilePath} for article {ArticleId}.", imageUrl, articleId);
             }
             catch (Exception ex)
             {
-                // Log other potential errors (path issues etc.)
                 _logger.LogError(ex, "Error deleting article image file for URL {ImageUrl}, Article ID {ArticleId}.", imageUrl, articleId);
             }
         }
@@ -281,21 +282,30 @@ namespace BlogApp.BLL.Services
         {
             if (count <= 0) return Enumerable.Empty<Article>();
             try { return await _unitOfWork.Articles.GetTopRankedArticlesAsync(count); }
-            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+            catch (Exception ex) {
+                 _logger.LogError(ex, "Error getting top {Count} ranked articles.", count);
+                 return Enumerable.Empty<Article>(); 
+            }
         }
 
         public async Task<IEnumerable<Article>> GetLastCommentedArticlesAsync(int count)
         {
             if (count <= 0) return Enumerable.Empty<Article>();
             try { return await _unitOfWork.Articles.GetLastCommentedArticlesAsync(count); }
-            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+            catch (Exception ex) {
+                 _logger.LogError(ex, "Error getting last {Count} commented articles.", count);
+                 return Enumerable.Empty<Article>(); 
+            }
         }
 
         public async Task<IEnumerable<Article>> SearchPublishedArticlesAsync(string searchTerm)
         {
             if (string.IsNullOrWhiteSpace(searchTerm)) return Enumerable.Empty<Article>();
             try { return await _unitOfWork.Articles.SearchPublishedArticlesAsync(searchTerm); }
-            catch (Exception ex) { return Enumerable.Empty<Article>(); }
+            catch (Exception ex) { 
+                _logger.LogError(ex, "Error searching published articles for term: {SearchTerm}", searchTerm);
+                return Enumerable.Empty<Article>(); 
+            }
         }
     }
 }

@@ -69,14 +69,14 @@ namespace BlogApp.Web.Controllers
                 return NotFound();
             }
 
-            // Check if published or user has rights
             bool canView = article.IsPublished;
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get current user ID (null if anonymous)
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             bool canModify = false;
             bool canRank = false;
             bool canComment = false;
+            bool isAdmin = User.IsInRole(AppRoles.Administrator);
 
-            if (!canView && currentUserId != null) // Check modify rights only if not published and user is logged in
+            if (!canView && currentUserId != null)
             {
                 canView = await _articleService.CanUserModifyArticleAsync(id, currentUserId);
             }
@@ -88,8 +88,23 @@ namespace BlogApp.Web.Controllers
             }
 
             int score = await _rankingService.GetArticleScoreAsync(id);
-            int? currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
-            var comments = await _commentService.GetCommentsByArticleIdAsync(id);
+            int? currentUserVote = null;
+
+            IEnumerable<Comment> commentsForView;
+            int blockedCommentCount = 0;
+
+            if (isAdmin)
+            {
+                commentsForView = await _commentService.GetAllCommentsForArticleIncludingBlockedAsync(id);
+                blockedCommentCount = commentsForView.Count(c => c.IsBlocked);
+            }
+            else
+            {
+                commentsForView = await _commentService.GetCommentsByArticleIdAsync(id);
+            }
+            ViewBag.BlockedCommentCount = blockedCommentCount;
+
+
             var commentViewModels = new List<CommentViewModel>();
 
             if (currentUserId != null)
@@ -98,41 +113,25 @@ namespace BlogApp.Web.Controllers
                 canRank = await _rankingService.CanUserRankAsync(currentUserId);
                 canComment = await _commentService.CanUserCommentAsync(currentUserId);
                 currentUserVote = await _rankingService.GetUserVoteForArticleAsync(id, currentUserId);
+            }
 
-                foreach (var comment in comments)
-                {
-                    commentViewModels.Add(new CommentViewModel
-                    {
-                        Id = comment.Id,
-                        Content = comment.Content,
-                        CreatedDate = comment.CreatedDate,
-                        LastUpdatedDate = comment.LastUpdatedDate,
-                        AuthorUsername = comment.User?.UserName ?? "Unknown",
-                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
-                        AuthorId = comment.UserId,
-                        CanEdit = await _commentService.CanUserEditCommentAsync(comment.Id, currentUserId),
-                        CanDelete = await _commentService.CanUserDeleteCommentAsync(comment.Id, currentUserId)
-                    });
-                }
-            }
-            else
+            foreach (var comment in commentsForView)
             {
-                foreach (var comment in comments)
+                commentViewModels.Add(new CommentViewModel
                 {
-                    commentViewModels.Add(new CommentViewModel
-                    {
-                        Id = comment.Id,
-                        Content = comment.Content,
-                        CreatedDate = comment.CreatedDate,
-                        LastUpdatedDate = comment.LastUpdatedDate,
-                        AuthorUsername = comment.User?.UserName ?? "Unknown",
-                        AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
-                        AuthorId = comment.UserId,
-                        CanEdit = false,
-                        CanDelete = false
-                    });
-                }
+                    Id = comment.Id,
+                    Content = comment.Content,
+                    CreatedDate = comment.CreatedDate,
+                    LastUpdatedDate = comment.LastUpdatedDate,
+                    AuthorUsername = comment.User?.UserName ?? "Unknown",
+                    AuthorProfilePictureUrl = comment.User?.ProfilePictureUrl,
+                    AuthorId = comment.UserId,
+                    IsBlocked = comment.IsBlocked,
+                    CanEdit = currentUserId != null && await _commentService.CanUserEditCommentAsync(comment.Id, currentUserId),
+                    CanDelete = currentUserId != null && await _commentService.CanUserDeleteCommentAsync(comment.Id, currentUserId)
+                });
             }
+
 
             var viewModel = new ArticleViewModel
             {
@@ -177,13 +176,16 @@ namespace BlogApp.Web.Controllers
             {
                 TempData["ErrorMessage"] = "Could not process your vote at this time.";
             }
+            // Optionally, set a SuccessMessage if you want feedback for successful votes too
+            // else { TempData["SuccessMessage"] = "Vote registered!"; }
+
 
             return RedirectToAction(nameof(Details), new { id = articleId });
         }
 
         // GET: /Articles/MyArticles (Logged-in user's articles)
         [HttpGet]
-        [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]  
+        [Authorize(Roles = $"{AppRoles.Author},{AppRoles.Administrator}")]
         public async Task<IActionResult> MyArticles()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -253,7 +255,7 @@ namespace BlogApp.Web.Controllers
                     if (createdArticle != null)
                     {
                         _logger.LogInformation("Article {ArticleId} created successfully by User {UserId}.", createdArticle.Id, userId);
-                        TempData["StatusMessage"] = "Article created successfully!";
+                        TempData["SuccessMessage"] = "Article created successfully!"; // Changed from StatusMessage
                         return RedirectToAction(nameof(Details), new { id = createdArticle.Id });
                     }
                     else
@@ -371,11 +373,11 @@ namespace BlogApp.Web.Controllers
                     {
                         _logger.LogInformation("Article {ArticleId} updated successfully by User {UserId}", id, userId);
                         // Delete the OLD image file only AFTER successful DB update and if new image was saved
-                        if (deleteOldImage)
+                        if (deleteOldImage && !string.IsNullOrEmpty(oldImageUrl) && oldImageUrl != newImageUrl)
                         {
                             DeleteArticleImageFile(oldImageUrl);
                         }
-                        TempData["StatusMessage"] = "Article updated successfully!";
+                        TempData["SuccessMessage"] = "Article updated successfully!"; // Changed from StatusMessage
                         return RedirectToAction(nameof(Details), new { id = model.Id });
                     }
                     else
@@ -384,7 +386,7 @@ namespace BlogApp.Web.Controllers
                         ModelState.AddModelError("", "Unable to update the article. Please try again.");
 
                         // If a new image was saved but DB update failed, attempt to delete the newly saved one
-                        if (newImageUrl != model.ExistingImageUrl) DeleteArticleImageFile(newImageUrl);
+                        if (newImageUrl != model.ExistingImageUrl && newImageUrl != oldImageUrl) DeleteArticleImageFile(newImageUrl);
                     }
                 }
                 catch (ArgumentException argEx) // From image saving
@@ -402,6 +404,7 @@ namespace BlogApp.Web.Controllers
             }
 
             // If we got this far, something failed, redisplay form
+            // Ensure ExistingImageUrl is repopulated if it was cleared by model binding on a failed new image upload.
             if (string.IsNullOrEmpty(model.ExistingImageUrl))
             {
                 var articleForView = await _articleService.GetArticleByIdWithAuthorAsync(id);
@@ -463,8 +466,8 @@ namespace BlogApp.Web.Controllers
             if (success)
             {
                 _logger.LogInformation("Article {ArticleId} deleted successfully by User {UserId}", id, userId);
-                TempData["StatusMessage"] = "Article deleted successfully!";
-                return RedirectToAction(nameof(Index));
+                TempData["SuccessMessage"] = "Article deleted successfully!"; // Changed from StatusMessage
+                return RedirectToAction(nameof(Index)); // Redirect to Index after delete
             }
             else
             {

@@ -3,11 +3,13 @@ using BlogApp.Core.Entities;
 using BlogApp.BLL.Interfaces;
 using BlogApp.BLL.Services;
 using BlogApp.DAL.Interfaces;
-using BlogApp.DAL.Repositories;
 using BlogApp.DAL;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +19,65 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+    options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier;
+    options.ClaimsIdentity.UserNameClaimType = ClaimTypes.Name;
+    options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role;
+    options.ClaimsIdentity.EmailClaimType = ClaimTypes.Email;
+})
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+});
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"];
+var issuer = jwtSettings["Issuer"];
+var audience = jwtSettings["Audience"];
+
+if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
+{
+    Console.WriteLine("JWT Settings (SecretKey, Issuer, Audience) are not configured properly in appsettings.json. API authentication will not work.");
+}
+else
+{
+    builder.Services.AddAuthentication()
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        options.SaveToken = true;
+        options.RequireHttpsMetadata = builder.Environment.IsProduction();
+        options.TokenValidationParameters = new TokenValidationParameters()
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+}
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ApiScope", policy =>
+    {
+        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
+        policy.RequireAuthenticatedUser();
+    });
+});
+
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
@@ -29,6 +87,7 @@ builder.Services.AddTransient<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IRankingService, RankingService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IModerationService, ModerationService>();
 
 // Register UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -58,7 +117,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Home/Error"); // Handles exceptions (500 errors)
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
@@ -66,8 +125,14 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+// Middleware to handle 404 Not Found errors by re-executing the request to a custom page
+// IMPORTANT: Place this before UseRouting
+app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+
+
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

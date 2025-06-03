@@ -14,6 +14,7 @@ namespace BlogApp.DAL.Data
         public DbSet<Article> Articles { get; set; }
         public DbSet<ArticleVote> ArticleVotes { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<CommentReport> CommentReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -41,7 +42,7 @@ namespace BlogApp.DAL.Data
 
 
             builder.Entity<ArticleVote>().ToTable("ArticleVotes");
-            
+
             builder.Entity<ArticleVote>().HasKey(av => av.Id);
 
             builder.Entity<ArticleVote>()
@@ -85,6 +86,52 @@ namespace BlogApp.DAL.Data
                 .HasForeignKey(c => c.UserId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
+
+
+            builder.Entity<CommentReport>().ToTable("CommentReports");
+
+            builder.Entity<CommentReport>().HasKey(cr => cr.Id);
+
+            builder.Entity<CommentReport>()
+            .Property(cr => cr.Status)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+            builder.Entity<CommentReport>()
+                .Property(cr => cr.Reason)
+                .HasMaxLength(500);
+
+            // Relationships
+            builder.Entity<CommentReport>()
+                .HasOne(cr => cr.Comment)
+                .WithMany()
+                .HasForeignKey(cr => cr.CommentId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<CommentReport>()
+                .HasOne(cr => cr.ReporterUser)
+                .WithMany()
+                .HasForeignKey(cr => cr.ReporterUserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<CommentReport>()
+                .HasOne(cr => cr.ReviewedByAdmin)
+                .WithMany()
+                .HasForeignKey(cr => cr.ReviewedByAdminId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Removed unique index: cr.CommentId, cr.ReporterUserId
+            // The logic in ModerationService.ReportCommentAsync already prevents
+            // a user from creating a new report if they already have a PENDING one
+            // for the same comment. Removing this DB constraint allows re-reporting
+            // if the previous report was actioned (Reviewed/Blocked) and the comment
+            // is problematic again.
+            // builder.Entity<CommentReport>()
+            //     .HasIndex(cr => new { cr.CommentId, cr.ReporterUserId })
+            //     .IsUnique();
         }
     }
 }

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Edit Article";
     var defaultProfilePic = "/images/default-profile.png"; // Assuming default if no image
+    int articleContentMaxLength = 10000; // Define max length for article content
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -22,7 +23,9 @@
 
             <div class="mb-3">
                 <label asp-for="Content" class="form-label"></label>
-                <textarea asp-for="Content" class="form-control" rows="15"></textarea>
+                <textarea asp-for="Content" class="form-control character-counted" rows="15"
+                    data-max-length="@articleContentMaxLength"></textarea>
+                <div class="char-counter-display text-end text-muted small mt-1"></div>
                 <span asp-validation-for="Content" class="text-danger"></span>
             </div>
 
@@ -33,7 +36,8 @@
                 {
                     <div class="mb-2">
                         <label>Current Image:</label><br />
-                        <img src="@Model.ExistingImageUrl" alt="Current Article Image" style="max-width: 300px; max-height: 200px; margin-bottom: 10px;" class="img-thumbnail" />
+                        <img src="@Model.ExistingImageUrl" alt="Current Article Image"
+                            style="max-width: 300px; max-height: 200px; margin-bottom: 10px;" class="img-thumbnail" />
                         @* Store existing URL to compare in controller - not strictly needed if fetched on POST *@
                         <input type="hidden" asp-for="ExistingImageUrl" />
                     </div>
@@ -43,7 +47,8 @@
                 {
                     <small class="form-text text-muted">Upload an image file for this article.</small>
                 }
-                <input asp-for="NewImage" type="file" class="form-control mt-1" accept="image/png, image/jpeg, image/gif" />
+                <input asp-for="NewImage" type="file" class="form-control mt-1"
+                    accept="image/png, image/jpeg, image/gif" />
                 <span asp-validation-for="NewImage" class="text-danger"></span>
             </div>
 

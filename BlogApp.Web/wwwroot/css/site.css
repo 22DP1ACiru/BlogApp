@@ -8,7 +8,11 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
@@ -18,28 +22,152 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  /* Ensure space for the footer */
+  padding-bottom: 100px; /* Adjust based on your footer's height */
 }
 
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  line-height: 60px; /* Vertically center the text if footer height is fixed */
+  background-color: #f8f9fa; /* Light background for the footer */
+}
+
+/* Article Detail Title Styling */
+.article-title-detailed {
+  overflow-wrap: break-word; /* Standard property */
+  word-wrap: break-word; /* Older browsers an/or IE */
+  /* hyphens: auto; */ /* Optional: for better breaking of long words if lang attribute is set on <html> */
+}
+
+/* Article Content Styling */
 .article-content {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: normal;
-    line-height: 1.6;
+  overflow-wrap: break-word; /* Handles long words/URLs */
+  word-wrap: break-word;
+  word-break: normal; /* Prefer normal word breaking */
+  line-height: 1.7; /* Improved readability */
+  font-size: 1.1rem; /* Slightly larger font for content */
 }
 
 .article-content img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin-top: 1.25rem;
-    margin-bottom: 1.25rem;
-    border-radius: 0.25rem;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    max-height: 80vh;
+  max-width: 100%; /* Responsive images */
+  height: auto; /* Maintain aspect ratio */
+  display: block; /* Center images if they have margin auto */
+  margin: 1.5rem auto; /* Add space around images and center them */
+  border-radius: 0.3rem; /* Slightly rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Softer shadow */
+  max-height: 70vh; /* Prevent images from being excessively tall */
+  object-fit: cover; /* Ensures the image covers the area nicely, might crop */
 }
 
 .article-content p {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  margin-bottom: 1.25rem; /* Space between paragraphs */
+}
+
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+/* Card styling enhancements */
+.card-img-top-placeholder {
+  height: 200px;
+  background-color: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #adb5bd;
+  font-style: italic;
+  border-top-left-radius: var(--bs-card-inner-border-radius);
+  border-top-right-radius: var(--bs-card-inner-border-radius);
+}
+
+.card-title a {
+  text-decoration: none;
+  color: inherit; /* Inherit color from parent for card titles */
+}
+
+.card-title a:hover {
+  color: #0056b3; /* Darker blue on hover */
+}
+
+/* Comment section improvements */
+.comment-container {
+  background-color: #fdfdfd;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* display: flex; is already on the element via d-flex class */
+}
+
+/* This class is added by _CommentDisplayPartial if comment is blocked AND user is admin */
+.admin-view-blocked-comment {
+  background-color: #fff5f5 !important; /* A very light red/pink */
+  border-left: 4px solid #f5c6cb !important; /* Bootstrap's alert-danger border color */
+  opacity: 0.85; /* Slightly faded to indicate it's special */
+}
+
+.admin-view-blocked-comment.initially-hidden {
+  display: none !important;
+}
+
+.blocked-comment-admin-indicator {
+  background-color: #f8d7da; /* Bootstrap's alert-danger background color */
+  border-color: #f5c6cb !important; /* Bootstrap's alert-danger border color */
+  color: #721c24; /* Bootstrap's alert-danger text color */
+}
+
+.comment-author-img {
+  width: 45px;
+  height: 45px;
+  object-fit: cover;
+}
+
+.comment-actions-display .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Utility for small profile pictures next to names */
+.inline-profile-pic {
+  width: 24px;
+  height: 24px;
+  object-fit: cover;
+  border: 1px solid #eee;
+}
+
+.default-profile-pic-small {
+  font-size: 1.2em; /* Adjust as needed */
+  color: #6c757d; /* Bootstrap text-muted color */
+}
+
+/* Character Counter Display */
+.char-counter-display {
+  font-size: 0.875em;
+  /* No specific styling needed other than text-end, text-muted, text-danger which are applied by JS */
+}
+
+/* Ensure modal body content wraps if it's too long */
+.modal-body {
+  overflow-wrap: break-word;
+  word-wrap: break-word; /* Older browsers */
+}
+
+/* General text truncation helper (if Bootstrap's text-truncate isn't sufficient or specific max-width is needed often) */
+.truncate-text-ellipsis {
+  display: inline-block; /* Or block */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top; /* Helps with alignment if mixed with other inline elements */
 }
